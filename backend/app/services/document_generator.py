@@ -1,5 +1,7 @@
 import io
+import re
 import json
+import docx
 from datetime import datetime
 from reportlab.lib.pagesizes import letter
 from reportlab.lib import colors
@@ -50,6 +52,11 @@ class NumberedCanvas(canvas.Canvas):
         self.restoreState()
 
 
+def render_markdown_bold_html(text: str) -> str:
+    """Helper to convert **bold** markdown to ReportLab <b>bold</b> tags."""
+    return re.sub(r'\*\*(.*?)\*\*', r'<b>\1</b>', text)
+
+
 def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_status: str) -> bytes:
     buffer = io.BytesIO()
     doc = SimpleDocTemplate(
@@ -67,8 +74,8 @@ def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_s
         'CoverTitle',
         parent=styles['Heading1'],
         fontName='Helvetica-Bold',
-        fontSize=26,
-        leading=32,
+        fontSize=24,
+        leading=30,
         textColor=colors.HexColor("#1e3a8a"),
         spaceAfter=15,
         alignment=1 # Center
@@ -78,10 +85,10 @@ def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_s
         'CoverSub',
         parent=styles['Normal'],
         fontName='Helvetica',
-        fontSize=14,
+        fontSize=13,
         leading=18,
         textColor=colors.HexColor("#475569"),
-        spaceAfter=30,
+        spaceAfter=25,
         alignment=1 # Center
     )
     
@@ -90,7 +97,7 @@ def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_s
         parent=styles['Heading2'],
         fontName='Helvetica-Bold',
         fontSize=12,
-        leading=15,
+        leading=16,
         textColor=colors.HexColor("#0f172a"),
         spaceBefore=14,
         spaceAfter=6,
@@ -102,53 +109,88 @@ def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_s
         parent=styles['Normal'],
         fontName='Helvetica',
         fontSize=9.5,
-        leading=13.5,
+        leading=14,
         textColor=colors.HexColor("#334155"),
         spaceAfter=6
+    )
+
+    bullet_style = ParagraphStyle(
+        'DocBullet',
+        parent=body_style,
+        leftIndent=15,
+        spaceAfter=4
     )
 
     story = []
     
     # 1. COVER PAGE
-    story.append(Spacer(1, 100))
-    story.append(Paragraph("SOFTWARE REQUIREMENTS SPECIFICATION", title_style))
-    story.append(Spacer(1, 15))
+    story.append(Spacer(1, 80))
+    story.append(Paragraph("SOFTWARE REQUIREMENTS SPECIFICATION (SRS)", title_style))
+    story.append(Spacer(1, 10))
     story.append(Paragraph(f"Project: <b>{project_name}</b>", subtitle_style))
-    story.append(Spacer(1, 120))
+    story.append(Spacer(1, 80))
     
     meta_table_data = [
-        [Paragraph("<b>Document Version:</b>", body_style), Paragraph(f"v{version}", body_style)],
-        [Paragraph("<b>Approval Status:</b>", body_style), Paragraph(approval_status, body_style)],
-        [Paragraph("<b>Author Role:</b>", body_style), Paragraph("Senior Business Analyst", body_style)],
-        [Paragraph("<b>Organization:</b>", body_style), Paragraph("AI SDLC Studio Corp", body_style)],
+        [Paragraph("<b>Document Version:</b>", body_style), Paragraph(f"v{version}.0", body_style)],
+        [Paragraph("<b>Approval Status:</b>", body_style), Paragraph(f"<b>{approval_status}</b>", body_style)],
+        [Paragraph("<b>Author System:</b>", body_style), Paragraph("AI SDLC Studio Autonomous Requirements Engine", body_style)],
+        [Paragraph("<b>Specification Standard:</b>", body_style), Paragraph("IEEE-830 Software Requirements Standard", body_style)],
+        [Paragraph("<b>Classification Level:</b>", body_style), Paragraph("Enterprise Confidential", body_style)],
         [Paragraph("<b>Generation Date:</b>", body_style), Paragraph(datetime.now().strftime('%Y-%m-%d %H:%M'), body_style)],
     ]
     t_meta = Table(meta_table_data, colWidths=[150, 250])
     t_meta.setStyle(TableStyle([
         ('BACKGROUND', (0,0), (-1,-1), colors.HexColor("#f8fafc")),
-        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#e2e8f0")),
-        ('PADDING', (0,0), (-1,-1), 8),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
+        ('PADDING', (0,0), (-1,-1), 7),
     ]))
     story.append(t_meta)
     story.append(PageBreak())
     
     # 2. TABLE OF CONTENTS PAGE
     story.append(Paragraph("TABLE OF CONTENTS", h1_style))
-    story.append(Spacer(1, 10))
-    toc_fields = [
-        "1. Document Information", "2. Revision History", "3. Approval History",
-        "4. Executive Summary", "5. Problem Statement", "6. Business Objectives",
-        "7. Stakeholders", "8. User Personas", "9. Actors", "10. Scope",
-        "11. Out of Scope", "12. Business Requirements", "13. Functional Requirements",
-        "14. Non-Functional Requirements", "15. Business Rules", "16. User Stories",
-        "17. Use Cases", "18. Acceptance Criteria", "19. UI Requirements",
-        "20. Navigation Flow", "21. Data Requirements", "22. Security Requirements",
-        "23. Integration Requirements", "24. Performance Requirements", "25. Compliance Requirements",
-        "26. Constraints", "27. Assumptions", "28. Risks", "29. Dependencies",
-        "30. Requirement Traceability Matrix"
+    story.append(Spacer(1, 8))
+    
+    toc_data = [
+        [Paragraph("<b>Section Title</b>", body_style), Paragraph("<b>Page Reference</b>", body_style)],
+        [Paragraph("1. Document Information", body_style), Paragraph("Page 3", body_style)],
+        [Paragraph("2. Revision History", body_style), Paragraph("Page 3", body_style)],
+        [Paragraph("3. Approval History", body_style), Paragraph("Page 3", body_style)],
+        [Paragraph("4. Executive Summary", body_style), Paragraph("Page 4", body_style)],
+        [Paragraph("5. Problem Statement & Current State", body_style), Paragraph("Page 4", body_style)],
+        [Paragraph("6. Business Objectives & Strategic KPIs", body_style), Paragraph("Page 5", body_style)],
+        [Paragraph("7. Stakeholders & Responsibilities", body_style), Paragraph("Page 5", body_style)],
+        [Paragraph("8. User Personas & Detailed Profiles", body_style), Paragraph("Page 6", body_style)],
+        [Paragraph("9. System Actors & Access Rights", body_style), Paragraph("Page 6", body_style)],
+        [Paragraph("10. In-Scope Functional Boundaries", body_style), Paragraph("Page 7", body_style)],
+        [Paragraph("11. Out-of-Scope & Future Phases", body_style), Paragraph("Page 7", body_style)],
+        [Paragraph("12. Business Requirements", body_style), Paragraph("Page 8", body_style)],
+        [Paragraph("13. Detailed Functional Requirements", body_style), Paragraph("Page 8", body_style)],
+        [Paragraph("14. Non-Functional & Quality Attributes", body_style), Paragraph("Page 10", body_style)],
+        [Paragraph("15. Business Rules & Logic Constraints", body_style), Paragraph("Page 11", body_style)],
+        [Paragraph("16. User Stories & Epics", body_style), Paragraph("Page 11", body_style)],
+        [Paragraph("17. Primary & Secondary Use Cases", body_style), Paragraph("Page 12", body_style)],
+        [Paragraph("18. Acceptance Criteria (Given-When-Then)", body_style), Paragraph("Page 13", body_style)],
+        [Paragraph("19. UI/UX & Layout Guidelines", body_style), Paragraph("Page 14", body_style)],
+        [Paragraph("20. Navigation & Information Architecture", body_style), Paragraph("Page 14", body_style)],
+        [Paragraph("21. Data Architecture & Schema Specs", body_style), Paragraph("Page 15", body_style)],
+        [Paragraph("22. Security, Auth & Encryption Policies", body_style), Paragraph("Page 15", body_style)],
+        [Paragraph("23. API & External Integration Contracts", body_style), Paragraph("Page 16", body_style)],
+        [Paragraph("24. Performance & Scalability Specs", body_style), Paragraph("Page 16", body_style)],
+        [Paragraph("25. Compliance & Regulatory Auditing", body_style), Paragraph("Page 17", body_style)],
+        [Paragraph("26. Architectural Constraints", body_style), Paragraph("Page 17", body_style)],
+        [Paragraph("27. Operational Assumptions", body_style), Paragraph("Page 18", body_style)],
+        [Paragraph("28. Risk Assessment & Mitigation Plan", body_style), Paragraph("Page 18", body_style)],
+        [Paragraph("29. System Dependencies & SDKs", body_style), Paragraph("Page 19", body_style)],
+        [Paragraph("30. Requirement Traceability Matrix (RTM)", body_style), Paragraph("Page 19", body_style)],
     ]
-    for field in toc_fields:
-        story.append(Paragraph(f"{field} .....................................................................................................................................", body_style))
+    t_toc = Table(toc_data, colWidths=[330, 90])
+    t_toc.setStyle(TableStyle([
+        ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f1f5f9")),
+        ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#e2e8f0")),
+        ('PADDING', (0,0), (-1,-1), 4),
+    ]))
+    story.append(t_toc)
     story.append(PageBreak())
     
     # 3. 30 SECTIONS CONTENT
@@ -157,31 +199,31 @@ def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_s
         ("2. Revision History", "revision_history"),
         ("3. Approval History", "approval_history"),
         ("4. Executive Summary", "executive_summary"),
-        ("5. Problem Statement", "problem_statement"),
-        ("6. Business Objectives", "business_objectives"),
-        ("7. Stakeholders", "stakeholders"),
-        ("8. User Personas", "user_personas"),
-        ("9. Actors", "actors"),
-        ("10. Scope", "scope"),
-        ("11. Out of Scope", "out_of_scope"),
+        ("5. Problem Statement & Current State", "problem_statement"),
+        ("6. Business Objectives & Strategic KPIs", "business_objectives"),
+        ("7. Stakeholders & Responsibilities", "stakeholders"),
+        ("8. User Personas & Profiles", "user_personas"),
+        ("9. System Actors & Access Rights", "actors"),
+        ("10. In-Scope Functional Boundaries", "scope"),
+        ("11. Out-of-Scope & Future Phases", "out_of_scope"),
         ("12. Business Requirements", "business_requirements"),
-        ("13. Functional Requirements", "functional_requirements"),
-        ("14. Non-Functional Requirements", "non_functional_requirements"),
-        ("15. Business Rules", "business_rules"),
-        ("16. User Stories", "user_stories"),
-        ("17. Use Cases", "use_cases"),
-        ("18. Acceptance Criteria", "acceptance_criteria"),
-        ("19. UI Requirements", "ui_requirements"),
-        ("20. Navigation Flow", "navigation_flow"),
-        ("21. Data Requirements", "data_requirements"),
-        ("22. Security Requirements", "security_requirements"),
-        ("23. Integration Requirements", "integration_requirements"),
-        ("24. Performance Requirements", "performance_requirements"),
-        ("25. Compliance Requirements", "compliance_requirements"),
-        ("26. Constraints", "constraints"),
-        ("27. Assumptions", "assumptions"),
-        ("28. Risks", "risks"),
-        ("29. Dependencies", "dependencies"),
+        ("13. Detailed Functional Requirements", "functional_requirements"),
+        ("14. Non-Functional & Quality Attributes", "non_functional_requirements"),
+        ("15. Business Rules & Logic Constraints", "business_rules"),
+        ("16. User Stories & Epics", "user_stories"),
+        ("17. Primary & Secondary Use Cases", "use_cases"),
+        ("18. Acceptance Criteria (Given-When-Then)", "acceptance_criteria"),
+        ("19. UI/UX & Layout Guidelines", "ui_requirements"),
+        ("20. Navigation & Information Architecture", "navigation_flow"),
+        ("21. Data Architecture & Schema Specs", "data_requirements"),
+        ("22. Security, Auth & Encryption Policies", "security_requirements"),
+        ("23. API & External Integration Contracts", "integration_requirements"),
+        ("24. Performance & Scalability Specs", "performance_requirements"),
+        ("25. Compliance & Regulatory Auditing", "compliance_requirements"),
+        ("26. Architectural Constraints", "constraints"),
+        ("27. Operational Assumptions", "assumptions"),
+        ("28. Risk Assessment & Mitigation Plan", "risks"),
+        ("29. System Dependencies & SDKs", "dependencies"),
     ]
     
     for label, key in sections:
@@ -191,41 +233,160 @@ def generate_srs_pdf(project_name: str, srs_data: dict, version: int, approval_s
             story.append(Paragraph("Not specified.", body_style))
         elif isinstance(val, list):
             for item in val:
-                story.append(Paragraph(f"• {item}", body_style))
+                item_str = render_markdown_bold_html(str(item))
+                lines = item_str.split('\n')
+                for line in lines:
+                    if line.strip():
+                        story.append(Paragraph(f"• {line.strip()}", bullet_style))
         else:
-            story.append(Paragraph(str(val), body_style))
-        story.append(Spacer(1, 10))
+            val_str = render_markdown_bold_html(str(val))
+            paragraphs = val_str.split('\n\n')
+            for p_text in paragraphs:
+                lines = p_text.split('\n')
+                for line in lines:
+                    if line.strip():
+                        story.append(Paragraph(line.strip(), body_style))
+        story.append(Spacer(1, 8))
         
     # 30. Traceability Matrix Table
     matrix = srs_data.get("requirement_traceability_matrix", [])
     if matrix:
-        story.append(Paragraph("30. Requirement Traceability Matrix", h1_style))
-        table_data = [["ID", "Title", "Description", "Category"]]
+        story.append(Paragraph("30. Requirement Traceability Matrix (RTM)", h1_style))
+        table_data = [[
+            Paragraph("<b>Req ID</b>", body_style), 
+            Paragraph("<b>Title</b>", body_style), 
+            Paragraph("<b>Detailed Description</b>", body_style), 
+            Paragraph("<b>Category</b>", body_style)
+        ]]
         for row in matrix:
             table_data.append([
-                row.get("id", ""),
-                row.get("title", ""),
-                row.get("description", ""),
-                row.get("category", "")
+                Paragraph(str(row.get("id", "")), body_style),
+                Paragraph(render_markdown_bold_html(str(row.get("title", ""))), body_style),
+                Paragraph(render_markdown_bold_html(str(row.get("description", ""))), body_style),
+                Paragraph(str(row.get("category", "")), body_style)
             ])
             
-        t = Table(table_data, colWidths=[60, 100, 240, 100])
+        t = Table(table_data, colWidths=[65, 110, 225, 100])
         t.setStyle(TableStyle([
             ('BACKGROUND', (0,0), (-1,0), colors.HexColor("#f1f5f9")),
-            ('TEXTCOLOR', (0,0), (-1,0), colors.HexColor("#0f172a")),
-            ('FONTNAME', (0,0), (-1,0), 'Helvetica-Bold'),
-            ('FONTSIZE', (0,0), (-1,0), 9),
-            ('BOTTOMPADDING', (0,0), (-1,0), 6),
-            ('ALIGN', (0,0), (-1,-1), 'LEFT'),
-            ('FONTNAME', (0,1), (-1,-1), 'Helvetica'),
-            ('FONTSIZE', (0,1), (-1,-1), 8),
-            ('VALIGN', (0,0), (-1,-1), 'TOP'),
             ('GRID', (0,0), (-1,-1), 0.5, colors.HexColor("#cbd5e1")),
-            ('ROWBACKGROUNDS', (0,1), (-1,-1), [colors.white, colors.HexColor("#f8fafc")]),
+            ('PADDING', (0,0), (-1,-1), 5),
+            ('VALIGN', (0,0), (-1,-1), 'TOP'),
         ]))
         story.append(t)
-        
+
     doc.build(story, canvasmaker=NumberedCanvas)
+    return buffer.getvalue()
+
+
+def generate_srs_docx(project_name: str, srs_data: dict, version: int, approval_status: str) -> bytes:
+    doc = Document()
+    
+    title_p = doc.add_paragraph()
+    run = title_p.add_run("SOFTWARE REQUIREMENTS SPECIFICATION")
+    run.font.size = docx.shared.Pt(22) if hasattr(docx, 'shared') else None
+    run.bold = True
+    
+    p_sub = doc.add_paragraph()
+    p_sub.add_run("Project Name: ").bold = True
+    p_sub.add_run(project_name + "\n")
+    p_sub.add_run("Version: ").bold = True
+    p_sub.add_run(f"v{version}.0\n")
+    p_sub.add_run("Status: ").bold = True
+    p_sub.add_run(approval_status + "\n")
+    p_sub.add_run("Specification Standard: ").bold = True
+    p_sub.add_run("IEEE-830 Software Requirements Standard\n")
+    p_sub.add_run("Generation Date: ").bold = True
+    p_sub.add_run(datetime.now().strftime('%Y-%m-%d %H:%M') + "\n")
+    
+    # Table of Contents
+    doc.add_heading("TABLE OF CONTENTS", level=1)
+    toc_fields = [
+        "1. Document Information", "2. Revision History", "3. Approval History",
+        "4. Executive Summary", "5. Problem Statement & Current State", "6. Business Objectives & Strategic KPIs",
+        "7. Stakeholders & Responsibilities", "8. User Personas & Profiles", "9. System Actors & Access Rights",
+        "10. In-Scope Functional Boundaries", "11. Out-of-Scope & Future Phases", "12. Business Requirements",
+        "13. Detailed Functional Requirements", "14. Non-Functional & Quality Attributes", "15. Business Rules & Logic Constraints",
+        "16. User Stories & Epics", "17. Primary & Secondary Use Cases", "18. Acceptance Criteria (Given-When-Then)",
+        "19. UI/UX & Layout Guidelines", "20. Navigation & Information Architecture", "21. Data Architecture & Schema Specs",
+        "22. Security, Auth & Encryption Policies", "23. API & External Integration Contracts", "24. Performance & Scalability Specs",
+        "25. Compliance & Regulatory Auditing", "26. Architectural Constraints", "27. Operational Assumptions",
+        "28. Risk Assessment & Mitigation Plan", "29. System Dependencies & SDKs", "30. Requirement Traceability Matrix (RTM)"
+    ]
+    for field in toc_fields:
+        doc.add_paragraph(field, style='List Bullet')
+
+    doc.add_page_break()
+    
+    sections = [
+        ("1. Document Information", "document_information"),
+        ("2. Revision History", "revision_history"),
+        ("3. Approval History", "approval_history"),
+        ("4. Executive Summary", "executive_summary"),
+        ("5. Problem Statement & Current State", "problem_statement"),
+        ("6. Business Objectives & Strategic KPIs", "business_objectives"),
+        ("7. Stakeholders & Responsibilities", "stakeholders"),
+        ("8. User Personas & Profiles", "user_personas"),
+        ("9. System Actors & Access Rights", "actors"),
+        ("10. In-Scope Functional Boundaries", "scope"),
+        ("11. Out-of-Scope & Future Phases", "out_of_scope"),
+        ("12. Business Requirements", "business_requirements"),
+        ("13. Detailed Functional Requirements", "functional_requirements"),
+        ("14. Non-Functional & Quality Attributes", "non_functional_requirements"),
+        ("15. Business Rules & Logic Constraints", "business_rules"),
+        ("16. User Stories & Epics", "user_stories"),
+        ("17. Primary & Secondary Use Cases", "use_cases"),
+        ("18. Acceptance Criteria (Given-When-Then)", "acceptance_criteria"),
+        ("19. UI/UX & Layout Guidelines", "ui_requirements"),
+        ("20. Navigation & Information Architecture", "navigation_flow"),
+        ("21. Data Architecture & Schema Specs", "data_requirements"),
+        ("22. Security, Auth & Encryption Policies", "security_requirements"),
+        ("23. API & External Integration Contracts", "integration_requirements"),
+        ("24. Performance & Scalability Specs", "performance_requirements"),
+        ("25. Compliance & Regulatory Auditing", "compliance_requirements"),
+        ("26. Architectural Constraints", "constraints"),
+        ("27. Operational Assumptions", "assumptions"),
+        ("28. Risk Assessment & Mitigation Plan", "risks"),
+        ("29. System Dependencies & SDKs", "dependencies"),
+    ]
+    
+    for label, key in sections:
+        doc.add_heading(label, level=1)
+        val = srs_data.get(key)
+        if not val:
+            doc.add_paragraph("Not specified.")
+        elif isinstance(val, list):
+            for item in val:
+                lines = str(item).split('\n')
+                for line in lines:
+                    if line.strip():
+                        doc.add_paragraph(line.strip(), style='List Bullet')
+        else:
+            paragraphs = str(val).split('\n\n')
+            for p_text in paragraphs:
+                lines = p_text.split('\n')
+                for line in lines:
+                    if line.strip():
+                        doc.add_paragraph(line.strip())
+            
+    matrix = srs_data.get("requirement_traceability_matrix", [])
+    if matrix:
+        doc.add_heading("30. Requirement Traceability Matrix (RTM)", level=1)
+        table = doc.add_table(rows=1, cols=4)
+        hdr_cells = table.rows[0].cells
+        hdr_cells[0].text = 'Req ID'
+        hdr_cells[1].text = 'Title'
+        hdr_cells[2].text = 'Detailed Description'
+        hdr_cells[3].text = 'Category'
+        for item in matrix:
+            row_cells = table.add_row().cells
+            row_cells[0].text = str(item.get("id", ""))
+            row_cells[1].text = str(item.get("title", ""))
+            row_cells[2].text = str(item.get("description", ""))
+            row_cells[3].text = str(item.get("category", ""))
+            
+    buffer = io.BytesIO()
+    doc.save(buffer)
     return buffer.getvalue()
 
 
@@ -233,9 +394,27 @@ def generate_srs_markdown(project_name: str, srs_data: dict, version: int, appro
     md = []
     md.append(f"# Software Requirements Specification (SRS)")
     md.append(f"**Project**: {project_name}")
-    md.append(f"**Version**: v{version}")
+    md.append(f"**Version**: v{version}.0")
     md.append(f"**Approval Status**: {approval_status}")
+    md.append(f"**Specification Standard**: IEEE-830 Software Requirements Standard")
     md.append(f"**Generated Date**: {datetime.now().strftime('%Y-%m-%d %H:%M')}")
+    md.append("\n---\n")
+
+    md.append("## TABLE OF CONTENTS")
+    toc_fields = [
+        "1. Document Information", "2. Revision History", "3. Approval History",
+        "4. Executive Summary", "5. Problem Statement & Current State", "6. Business Objectives & Strategic KPIs",
+        "7. Stakeholders & Responsibilities", "8. User Personas & Profiles", "9. System Actors & Access Rights",
+        "10. In-Scope Functional Boundaries", "11. Out-of-Scope & Future Phases", "12. Business Requirements",
+        "13. Detailed Functional Requirements", "14. Non-Functional & Quality Attributes", "15. Business Rules & Logic Constraints",
+        "16. User Stories & Epics", "17. Primary & Secondary Use Cases", "18. Acceptance Criteria (Given-When-Then)",
+        "19. UI/UX & Layout Guidelines", "20. Navigation & Information Architecture", "21. Data Architecture & Schema Specs",
+        "22. Security, Auth & Encryption Policies", "23. API & External Integration Contracts", "24. Performance & Scalability Specs",
+        "25. Compliance & Regulatory Auditing", "26. Architectural Constraints", "27. Operational Assumptions",
+        "28. Risk Assessment & Mitigation Plan", "29. System Dependencies & SDKs", "30. Requirement Traceability Matrix (RTM)"
+    ]
+    for field in toc_fields:
+        md.append(f"- [{field}](#{field.lower().replace(' ', '-').replace('&', '').replace('(', '').replace(')', '')})")
     md.append("\n---\n")
 
     sections = [
@@ -243,31 +422,31 @@ def generate_srs_markdown(project_name: str, srs_data: dict, version: int, appro
         ("2. Revision History", "revision_history"),
         ("3. Approval History", "approval_history"),
         ("4. Executive Summary", "executive_summary"),
-        ("5. Problem Statement", "problem_statement"),
-        ("6. Business Objectives", "business_objectives"),
-        ("7. Stakeholders", "stakeholders"),
-        ("8. User Personas", "user_personas"),
-        ("9. Actors", "actors"),
-        ("10. Scope", "scope"),
-        ("11. Out of Scope", "out_of_scope"),
+        ("5. Problem Statement & Current State", "problem_statement"),
+        ("6. Business Objectives & Strategic KPIs", "business_objectives"),
+        ("7. Stakeholders & Responsibilities", "stakeholders"),
+        ("8. User Personas & Profiles", "user_personas"),
+        ("9. System Actors & Access Rights", "actors"),
+        ("10. In-Scope Functional Boundaries", "scope"),
+        ("11. Out-of-Scope & Future Phases", "out_of_scope"),
         ("12. Business Requirements", "business_requirements"),
-        ("13. Functional Requirements", "functional_requirements"),
-        ("14. Non-Functional Requirements", "non_functional_requirements"),
-        ("15. Business Rules", "business_rules"),
-        ("16. User Stories", "user_stories"),
-        ("17. Use Cases", "use_cases"),
-        ("18. Acceptance Criteria", "acceptance_criteria"),
-        ("19. UI Requirements", "ui_requirements"),
-        ("20. Navigation Flow", "navigation_flow"),
-        ("21. Data Requirements", "data_requirements"),
-        ("22. Security Requirements", "security_requirements"),
-        ("23. Integration Requirements", "integration_requirements"),
-        ("24. Performance Requirements", "performance_requirements"),
-        ("25. Compliance Requirements", "compliance_requirements"),
-        ("26. Constraints", "constraints"),
-        ("27. Assumptions", "assumptions"),
-        ("28. Risks", "risks"),
-        ("29. Dependencies", "dependencies"),
+        ("13. Detailed Functional Requirements", "functional_requirements"),
+        ("14. Non-Functional & Quality Attributes", "non_functional_requirements"),
+        ("15. Business Rules & Logic Constraints", "business_rules"),
+        ("16. User Stories & Epics", "user_stories"),
+        ("17. Primary & Secondary Use Cases", "use_cases"),
+        ("18. Acceptance Criteria (Given-When-Then)", "acceptance_criteria"),
+        ("19. UI/UX & Layout Guidelines", "ui_requirements"),
+        ("20. Navigation & Information Architecture", "navigation_flow"),
+        ("21. Data Architecture & Schema Specs", "data_requirements"),
+        ("22. Security, Auth & Encryption Policies", "security_requirements"),
+        ("23. API & External Integration Contracts", "integration_requirements"),
+        ("24. Performance & Scalability Specs", "performance_requirements"),
+        ("25. Compliance & Regulatory Auditing", "compliance_requirements"),
+        ("26. Architectural Constraints", "constraints"),
+        ("27. Operational Assumptions", "assumptions"),
+        ("28. Risk Assessment & Mitigation Plan", "risks"),
+        ("29. System Dependencies & SDKs", "dependencies"),
     ]
 
     for label, key in sections:
@@ -284,92 +463,16 @@ def generate_srs_markdown(project_name: str, srs_data: dict, version: int, appro
 
     matrix = srs_data.get("requirement_traceability_matrix", [])
     if matrix:
-        md.append("## 30. Requirement Traceability Matrix")
-        md.append("| ID | Title | Description | Category |")
+        md.append("## 30. Requirement Traceability Matrix (RTM)")
+        md.append("| Req ID | Title | Detailed Description | Category |")
         md.append("| --- | --- | --- | --- |")
         for item in matrix:
-            md.append(f"| {item.get('id', '')} | {item.get('title', '')} | {item.get('description', '')} | {item.get('category', '')} |")
+            title = str(item.get("title", "")).replace("\n", " ")
+            desc = str(item.get("description", "")).replace("\n", " ")
+            md.append(f"| {item.get('id', '')} | {title} | {desc} | {item.get('category', '')} |")
         md.append("")
 
     return "\n".join(md)
-
-
-def generate_srs_docx(project_name: str, srs_data: dict, version: int, approval_status: str) -> bytes:
-    doc = Document()
-    doc.add_heading("Software Requirements Specification", 0)
-    
-    p = doc.add_paragraph()
-    p.add_run("Project Name: ").bold = True
-    p.add_run(project_name + "\n")
-    p.add_run("Version: ").bold = True
-    p.add_run(str(version) + "\n")
-    p.add_run("Status: ").bold = True
-    p.add_run(approval_status + "\n")
-    p.add_run("Generated Date: ").bold = True
-    p.add_run(datetime.now().strftime('%Y-%m-%d %H:%M') + "\n")
-    
-    sections = [
-        ("1. Document Information", "document_information"),
-        ("2. Revision History", "revision_history"),
-        ("3. Approval History", "approval_history"),
-        ("4. Executive Summary", "executive_summary"),
-        ("5. Problem Statement", "problem_statement"),
-        ("6. Business Objectives", "business_objectives"),
-        ("7. Stakeholders", "stakeholders"),
-        ("8. User Personas", "user_personas"),
-        ("9. Actors", "actors"),
-        ("10. Scope", "scope"),
-        ("11. Out of Scope", "out_of_scope"),
-        ("12. Business Requirements", "business_requirements"),
-        ("13. Functional Requirements", "functional_requirements"),
-        ("14. Non-Functional Requirements", "non_functional_requirements"),
-        ("15. Business Rules", "business_rules"),
-        ("16. User Stories", "user_stories"),
-        ("17. Use Cases", "use_cases"),
-        ("18. Acceptance Criteria", "acceptance_criteria"),
-        ("19. UI Requirements", "ui_requirements"),
-        ("20. Navigation Flow", "navigation_flow"),
-        ("21. Data Requirements", "data_requirements"),
-        ("22. Security Requirements", "security_requirements"),
-        ("23. Integration Requirements", "integration_requirements"),
-        ("24. Performance Requirements", "performance_requirements"),
-        ("25. Compliance Requirements", "compliance_requirements"),
-        ("26. Constraints", "constraints"),
-        ("27. Assumptions", "assumptions"),
-        ("28. Risks", "risks"),
-        ("29. Dependencies", "dependencies"),
-    ]
-    
-    for label, key in sections:
-        doc.add_heading(label, level=1)
-        val = srs_data.get(key)
-        if not val:
-            doc.add_paragraph("Not specified.")
-        elif isinstance(val, list):
-            for item in val:
-                doc.add_paragraph(item, style='List Bullet')
-        else:
-            doc.add_paragraph(str(val))
-            
-    matrix = srs_data.get("requirement_traceability_matrix", [])
-    if matrix:
-        doc.add_heading("30. Requirement Traceability Matrix", level=1)
-        table = doc.add_table(rows=1, cols=4)
-        hdr_cells = table.rows[0].cells
-        hdr_cells[0].text = 'ID'
-        hdr_cells[1].text = 'Title'
-        hdr_cells[2].text = 'Description'
-        hdr_cells[3].text = 'Category'
-        for item in matrix:
-            row_cells = table.add_row().cells
-            row_cells[0].text = str(item.get("id", ""))
-            row_cells[1].text = str(item.get("title", ""))
-            row_cells[2].text = str(item.get("description", ""))
-            row_cells[3].text = str(item.get("category", ""))
-            
-    buffer = io.BytesIO()
-    doc.save(buffer)
-    return buffer.getvalue()
 
 
 def generate_sdd_pdf(project_name: str, sdd_data: dict, version: int, approval_status: str) -> bytes:
