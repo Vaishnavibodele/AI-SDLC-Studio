@@ -19,8 +19,8 @@ API_KEY_NAME = "X-API-Key"
 api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 def verify_api_key(request: Request, api_key: Optional[str] = Security(api_key_header)):
-    # Allow health check to pass without key
-    if request.url.path == "/health":
+    # Allow health check, root, and docs to pass without key
+    if request.url.path in ["/", "/health", "/docs", "/openapi.json", "/redoc"]:
         return
     # Support both header and query param for downloads/window.open
     actual_key = api_key or request.query_params.get("api_key")
@@ -36,6 +36,17 @@ app = FastAPI(
     version="1.0.0",
     dependencies=[Depends(verify_api_key)]
 )
+
+@app.get("/")
+def read_root():
+    return {
+        "status": "online",
+        "service": "AI SDLC Studio Backend API",
+        "version": "2.0.0",
+        "frontend_url": "http://localhost:3000",
+        "api_docs": "http://127.0.0.1:8000/docs",
+        "message": "AI SDLC Studio Backend API is running successfully. Please open the user interface at http://localhost:3000"
+    }
 
 # CORS middleware config
 origins = [
@@ -260,27 +271,17 @@ def get_project_status(project_id: str, db: Session = Depends(get_db)):
         
     activity_logs = project_service.get_activity_logs(db, project_id)
     
-    # 1. Calculate Requirement Completeness %
-    req_completeness = 0
-    if srs_data:
-        sections = [
-            "document_information", "revision_history", "approval_history",
-            "executive_summary", "problem_statement", "business_objectives", "stakeholders",
-            "user_personas", "actors", "scope", "out_of_scope", "business_requirements",
-            "functional_requirements", "non_functional_requirements", "business_rules",
-            "user_stories", "use_cases", "acceptance_criteria", "ui_requirements",
-            "navigation_flow", "data_requirements", "security_requirements", "integration_requirements",
-            "performance_requirements", "compliance_requirements", "constraints", "assumptions",
-            "risks", "dependencies", "requirement_traceability_matrix"
-        ]
-        filled = sum(1 for k in sections if srs_data.get(k) and (not isinstance(srs_data[k], list) or len(srs_data[k]) > 0))
-        req_completeness = int((filled / len(sections)) * 100)
-    elif state_details.get("memory"):
-        mem = state_details["memory"]
-        mem_dict = mem.dict() if hasattr(mem, "dict") else (mem if isinstance(mem, dict) else {})
-        fields = ["project_summary", "business_goals", "target_users", "functional_requirements", "non_functional_requirements", "constraints", "assumptions", "acceptance_criteria"]
-        filled = sum(1 for k in fields if mem_dict.get(k) and (not isinstance(mem_dict[k], list) or len(mem_dict[k]) > 0))
-        req_completeness = int((filled / len(fields)) * 100)
+    # 1. Calculate Requirement Completeness % logically
+    mem_obj = state_details.get("memory")
+    mem_dict = mem_obj.dict() if hasattr(mem_obj, "dict") else (mem_obj if isinstance(mem_obj, dict) else {})
+    doc_obj = state_details.get("document")
+    doc_dict = doc_obj.dict() if hasattr(doc_obj, "dict") else (doc_obj if isinstance(doc_obj, dict) else {})
+    
+    req_completeness = project_service.calculate_logical_requirement_completeness(
+        memory_dict=mem_dict,
+        srs_data=srs_data,
+        doc_dict=doc_dict
+    )
         
     # 2. Calculate Design Completeness %
     design_completeness = 0

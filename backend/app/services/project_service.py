@@ -33,6 +33,117 @@ def update_project_status(db: Session, project_id: str, phase: str, status: str)
         db.refresh(project)
     return project
 
+def calculate_logical_requirement_completeness(memory_dict: Optional[dict] = None, srs_data: Optional[dict] = None, doc_dict: Optional[dict] = None) -> int:
+    """
+    Logically calculates Requirement Completeness % (0 - 100%) based on quality, depth,
+    requirement counts, section coverage, and open question penalties.
+    """
+    if srs_data:
+        total_weight = 0.0
+        
+        # Core Sections (High Weight - 50%)
+        core_sections = ["executive_summary", "problem_statement", "business_objectives", "scope", "functional_requirements", "non_functional_requirements"]
+        core_filled = 0
+        for s in core_sections:
+            val = srs_data.get(s)
+            if val:
+                val_str = str(val) if not isinstance(val, list) else " ".join(str(i) for i in val)
+                if len(val_str.strip()) > 100:
+                    core_filled += 1
+                elif len(val_str.strip()) > 20:
+                    core_filled += 0.5
+        total_weight += (core_filled / len(core_sections)) * 50.0
+
+        # Detailed Engineering Sections (30%)
+        eng_sections = ["user_personas", "actors", "business_rules", "user_stories", "use_cases", "acceptance_criteria", "ui_requirements", "navigation_flow", "data_requirements", "security_requirements", "integration_requirements", "performance_requirements"]
+        eng_filled = 0
+        for s in eng_sections:
+            val = srs_data.get(s)
+            if val and (not isinstance(val, list) or len(val) > 0):
+                eng_filled += 1
+        total_weight += (eng_filled / len(eng_sections)) * 30.0
+
+        # Governance & Constraints Sections (20%)
+        gov_sections = ["document_information", "revision_history", "approval_history", "out_of_scope", "compliance_requirements", "constraints", "assumptions", "risks", "dependencies", "requirement_traceability_matrix"]
+        gov_filled = 0
+        for s in gov_sections:
+            val = srs_data.get(s)
+            if val and (not isinstance(val, list) or len(val) > 0):
+                gov_filled += 1
+        total_weight += (gov_filled / len(gov_sections)) * 20.0
+
+        return min(100, max(0, int(round(total_weight))))
+
+    if doc_dict:
+        from . import requirement_validator
+        try:
+            doc_obj = schemas.ProjectDocument(**doc_dict)
+            score, _ = requirement_validator.check_completeness(doc_obj, backlog_required=len(doc_obj.epics) > 0)
+            return score
+        except Exception:
+            pass
+
+    if memory_dict:
+        score = 0
+        
+        # 1. Project Summary (up to 20 pts based on text length & depth)
+        summary = memory_dict.get("project_summary", "") or ""
+        if len(summary.strip()) >= 150:
+            score += 20
+        elif len(summary.strip()) >= 50:
+            score += 15
+        elif len(summary.strip()) > 0:
+            score += 10
+
+        # 2. Business Goals (up to 15 pts based on depth)
+        goals = memory_dict.get("business_goals", "") or ""
+        if len(goals.strip()) >= 80:
+            score += 15
+        elif len(goals.strip()) >= 30:
+            score += 10
+        elif len(goals.strip()) > 0:
+            score += 5
+
+        # 3. Target Users / Personas (up to 10 pts based on role count)
+        users = memory_dict.get("target_users", []) or []
+        if len(users) >= 2:
+            score += 10
+        elif len(users) == 1:
+            score += 5
+
+        # 4. Functional Requirements (up to 25 pts based on requirement count)
+        func = memory_dict.get("functional_requirements", []) or []
+        if len(func) >= 4:
+            score += 25
+        elif len(func) >= 2:
+            score += 18
+        elif len(func) == 1:
+            score += 10
+
+        # 5. Non-Functional Requirements (up to 15 pts based on NFR count)
+        nfr = memory_dict.get("non_functional_requirements", []) or []
+        if len(nfr) >= 3:
+            score += 15
+        elif len(nfr) >= 1:
+            score += 10
+
+        # 6. Constraints & Assumptions (up to 15 pts)
+        constraints = memory_dict.get("constraints", []) or []
+        assumptions = memory_dict.get("assumptions", []) or []
+        ac = memory_dict.get("acceptance_criteria", []) or []
+        if len(constraints) > 0: score += 5
+        if len(assumptions) > 0: score += 5
+        if len(ac) > 0: score += 5
+
+        # 7. Penalty for unresolved open questions (-5 pts each)
+        questions = memory_dict.get("open_questions", []) or []
+        if questions:
+            score = max(0, score - (len(questions) * 5))
+
+        return min(100, max(0, score))
+
+    return 0
+
 def update_with_state(
     db: Session,
     project_id: str,

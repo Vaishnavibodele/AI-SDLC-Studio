@@ -91,14 +91,27 @@ def run_chat_step(db: Session, project_id: str, message_text: str) -> Dict[str, 
         if any(kw in msg_lower for kw in compile_keywords):
             inputs["phase"] = "GENERATING_SRS"
             
-        outputs = compiled_graph.invoke(inputs, config)
+        try:
+            outputs = compiled_graph.invoke(inputs, config)
+        except Exception as e:
+            print(f"[Requirement Service] Graph invoke interrupt or notice ({e})")
+            outputs = {}
+            
+    # Process outputs and snapshot state values
+    latest_state = compiled_graph.get_state(config)
+    state_values = latest_state.values if (latest_state and latest_state.values) else {}
+    if not outputs:
+        outputs = state_values
         
-    # Process outputs and persist state
-    phase = outputs.get("phase", "draft")
-    document = outputs.get("document")
+    phase = state_values.get("phase") or outputs.get("phase") or "draft"
+    document = state_values.get("document") or outputs.get("document")
+    memory = state_values.get("memory") or outputs.get("memory")
+    messages = state_values.get("messages") or outputs.get("messages")
+    missing_info = state_values.get("missing_info") or outputs.get("missing_info")
+    validation_attempts = state_values.get("validation_attempts") or outputs.get("validation_attempts", 0)
     
     doc_dict = document.dict() if (document and hasattr(document, "dict")) else document
-    mem_dict = outputs.get("memory").dict() if (outputs.get("memory") and hasattr(outputs.get("memory"), "dict")) else outputs.get("memory")
+    mem_dict = memory.dict() if (memory and hasattr(memory, "dict")) else memory
     
     # Save state to database
     project_service.update_with_state(
@@ -108,10 +121,10 @@ def run_chat_step(db: Session, project_id: str, message_text: str) -> Dict[str, 
         status="IN_PROGRESS" if phase != "completed" else "APPROVED",
         current_state=phase,
         document=doc_dict,
-        messages=outputs.get("messages"),
+        messages=messages,
         memory=mem_dict,
-        missing_info=outputs.get("missing_info"),
-        validation_attempts=outputs.get("validation_attempts")
+        missing_info=missing_info,
+        validation_attempts=validation_attempts
     )
     
     # If completed, create version snapshot and transition to design phase

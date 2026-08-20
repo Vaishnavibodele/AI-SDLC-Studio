@@ -1488,165 +1488,203 @@ export default function App() {
                       </div>
                     )}
 
-                    {/* Multi-Stage Gated Review Panel */}
-                    {(projectDetails.agent_state.phase === 'awaiting_extraction_approval' || 
-                      projectDetails.agent_state.phase === 'awaiting_gap_approval' || 
-                      projectDetails.agent_state.phase === 'awaiting_validation_approval' || 
-                      projectDetails.agent_state.phase === 'awaiting_finalization_approval' ||
-                      projectDetails.agent_state.phase === 'AWAITING_APPROVAL') && (
-                      <div className="bg-[#181f32]/40 border border-indigo-500/35 rounded-xl p-5 space-y-4 shadow-xl">
-                        <div className="flex items-center gap-2 text-indigo-400 font-black text-xs uppercase tracking-widest border-b border-slate-800 pb-2">
-                          <ShieldCheck className="h-4 w-4 animate-pulse" />
+                    {/* Permanent Multi-Stage Gated Review Panel */}
+                    <div className="bg-[#181f32]/60 border border-indigo-500/35 rounded-xl p-5 space-y-4 shadow-xl">
+                      <div className="flex items-center justify-between border-b border-slate-800 pb-2">
+                        <div className="flex items-center gap-2 text-indigo-400 font-black text-xs uppercase tracking-widest">
+                          <ShieldCheck className="h-4 w-4 text-indigo-400" />
                           <span>Gated Approval Pipeline</span>
                         </div>
-
-                        {/* Extraction Stage */}
-                        {(projectDetails.agent_state.phase === 'awaiting_extraction_approval') && (
-                          <div className="space-y-3">
-                            <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 1: Extraction</span>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
-                              Review the extracted requirements. Check the stability, actors, and priority mapping.
-                            </p>
-                            {projectDetails.agent_state.document?.requirements && (
-                              <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 max-h-32 overflow-y-auto space-y-1.5 font-mono">
-                                {projectDetails.agent_state.document.requirements.map((r: any) => (
-                                  <div key={r.requirement_id} className="border-b border-slate-900 pb-1">
-                                    <span className="text-indigo-400 font-bold">{r.requirement_id}</span> ({r.requirement_type}): {r.title}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex gap-2 pt-2">
-                              <button 
-                                onClick={() => { setReviewStage('EXTRACTION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
-                              >
-                                Reject
-                              </button>
-                              <button 
-                                onClick={() => { setReviewStage('EXTRACTION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs"
-                              >
-                                Approve
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Gaps Stage */}
-                        {(projectDetails.agent_state.phase === 'awaiting_gap_approval') && (
-                          <div className="space-y-3">
-                            <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 2: Gap Detection</span>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
-                              Review the identified requirement gaps. Confirm if any blocking clarifications are required.
-                            </p>
-                            {projectDetails.agent_state.gaps && (
-                              <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 max-h-32 overflow-y-auto space-y-1.5">
-                                {projectDetails.agent_state.gaps.map((g: any) => (
-                                  <div key={g.id} className="border-b border-slate-900 pb-1">
-                                    <span className={g.blocking ? "text-rose-400 font-bold" : "text-amber-400 font-bold"}>
-                                      [{g.blocking ? 'BLOCKING' : 'INFO'}]
-                                    </span> {g.description}
-                                  </div>
-                                ))}
-                              </div>
-                            )}
-                            <div className="flex gap-2 pt-2">
-                              <button 
-                                onClick={() => { setReviewStage('GAP_DETECTION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
-                              >
-                                Reject
-                              </button>
-                              <button 
-                                onClick={() => { setReviewStage('GAP_DETECTION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs"
-                              >
-                                Approve
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Validation Stage */}
-                        {(projectDetails.agent_state.phase === 'awaiting_validation_approval') && (
-                          <div className="space-y-3">
-                            <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 3: Quality Validation</span>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
-                              Review quality scores. The system requires overall quality index &ge; 70 to proceed.
-                            </p>
-                            {projectDetails.agent_state.document?.quality_result && (
-                              <div className="bg-slate-950 p-3 rounded border border-slate-800 text-[10px] text-slate-400 space-y-2">
-                                <div className="flex justify-between items-center text-xs">
-                                  <span className="font-bold">Overall Score:</span>
-                                  <span className={projectDetails.agent_state.document.quality_result.valid ? "text-emerald-400 font-black text-sm" : "text-rose-400 font-black text-sm"}>
-                                    {projectDetails.agent_state.document.quality_result.overall_score}/100
-                                  </span>
-                                </div>
-                                <div className="space-y-1">
-                                  {Object.entries(projectDetails.agent_state.document.quality_result.scores).map(([k, v]: any) => (
-                                    <div key={k} className="space-y-0.5">
-                                      <div className="flex justify-between text-[9px] uppercase font-semibold">
-                                        <span>{k}</span>
-                                        <span>{v}</span>
-                                      </div>
-                                      <div className="h-1 bg-slate-900 rounded overflow-hidden">
-                                        <div className="h-full bg-indigo-500 rounded" style={{ width: `${v}%` }} />
-                                      </div>
-                                    </div>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-                            <div className="flex gap-2 pt-2">
-                              <button 
-                                onClick={() => { setReviewStage('VALIDATION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
-                              >
-                                Reject
-                              </button>
-                              <button 
-                                onClick={() => { setReviewStage('VALIDATION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs"
-                              >
-                                Approve
-                              </button>
-                            </div>
-                          </div>
-                        )}
-
-                        {/* Finalization Stage */}
-                        {(projectDetails.agent_state.phase === 'awaiting_finalization_approval' || 
-                          projectDetails.agent_state.phase === 'AWAITING_APPROVAL') && (
-                          <div className="space-y-3">
-                            <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 4: Finalization</span>
-                            <p className="text-[11px] text-slate-400 leading-relaxed">
-                              Confirm sign-off on generated requirements backlog (Epics, Features, User Stories, and Acceptance Criteria) to transition to the Design Phase.
-                            </p>
-                            <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 space-y-1">
-                              <div><span className="font-bold text-slate-300">Epics:</span> {projectDetails.agent_state.document?.epics?.length || 0}</div>
-                              <div><span className="font-bold text-slate-300">Features:</span> {projectDetails.agent_state.document?.features?.length || 0}</div>
-                              <div><span className="font-bold text-slate-300">Stories:</span> {projectDetails.agent_state.document?.user_stories?.length || 0}</div>
-                              <div><span className="font-bold text-slate-300">Criteria:</span> {projectDetails.agent_state.document?.acceptance_criteria?.length || 0}</div>
-                            </div>
-                            <div className="flex gap-2 pt-2">
-                              <button 
-                                onClick={() => { setReviewStage('FINALIZATION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
-                              >
-                                Reject
-                              </button>
-                              <button 
-                                onClick={() => { setReviewStage('FINALIZATION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
-                                className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs"
-                              >
-                                Approve
-                              </button>
-                            </div>
-                          </div>
-                        )}
+                        <span className="text-[9px] font-extrabold uppercase px-2 py-0.5 rounded bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                          {projectDetails.agent_state.phase === 'awaiting_extraction_approval' ? 'Stage 1: Extraction' :
+                           projectDetails.agent_state.phase === 'awaiting_gap_approval' ? 'Stage 2: Gap Detection' :
+                           projectDetails.agent_state.phase === 'awaiting_validation_approval' ? 'Stage 3: Validation' :
+                           (projectDetails.agent_state.phase === 'awaiting_finalization_approval' || projectDetails.agent_state.phase === 'AWAITING_APPROVAL') ? 'Stage 4: Finalization' :
+                           projectDetails.project.status === 'APPROVED' ? 'Approved & Completed' : 'Draft / Interactive'}
+                        </span>
                       </div>
-                    )}
+
+                      {/* Draft Phase: Trigger Pipeline Button */}
+                      {(projectDetails.agent_state.phase === 'draft' || projectDetails.agent_state.phase === 'idle' || !projectDetails.agent_state.phase) && projectDetails.project.status !== 'APPROVED' && (
+                        <div className="space-y-3">
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Run the autonomous 4-stage pipeline (Extraction &rarr; Gap Detection &rarr; Quality Validation &rarr; Finalization).
+                          </p>
+                          <button
+                            onClick={triggerSRSCompile}
+                            disabled={sendingChat}
+                            className="w-full flex items-center justify-center gap-2 py-2.5 px-4 bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs rounded-lg transition-all shadow-md shadow-indigo-600/30 disabled:opacity-50"
+                          >
+                            <Sparkles className="h-4 w-4" />
+                            Run Requirements Pipeline (Stage 1 to 4)
+                          </button>
+                        </div>
+                      )}
+
+                      {/* Processing / Generating Phase */}
+                      {(projectDetails.agent_state.phase === 'processing' || projectDetails.agent_state.phase === 'GENERATING_SRS') && (
+                        <div className="space-y-2 text-center py-3">
+                          <RefreshCw className="h-5 w-5 text-indigo-400 animate-spin mx-auto" />
+                          <span className="text-xs font-bold text-slate-300 block">Pipeline Execution in Progress...</span>
+                          <span className="text-[10px] text-slate-500 block">Extracting canonical requirement document & running quality gates</span>
+                        </div>
+                      )}
+
+                      {/* Stage 1: Extraction Approval */}
+                      {(projectDetails.agent_state.phase === 'awaiting_extraction_approval') && (
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 1: Extraction Approval</span>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Review the extracted canonical requirements. Check priority and actor mapping.
+                          </p>
+                          {projectDetails.agent_state.document?.requirements && (
+                            <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 max-h-32 overflow-y-auto space-y-1.5 font-mono">
+                              {projectDetails.agent_state.document.requirements.map((r: any) => (
+                                <div key={r.requirement_id} className="border-b border-slate-900 pb-1">
+                                  <span className="text-indigo-400 font-bold">{r.requirement_id}</span> ({r.requirement_type}): {r.title}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={() => { setReviewStage('EXTRACTION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              onClick={() => { setReviewStage('EXTRACTION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow-md shadow-emerald-600/30"
+                            >
+                              Approve Stage 1
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stage 2: Gap Detection Approval */}
+                      {(projectDetails.agent_state.phase === 'awaiting_gap_approval') && (
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 2: Gap Detection Approval</span>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Review identified requirement gaps. Confirm if blocking clarifications are required.
+                          </p>
+                          {projectDetails.agent_state.gaps && (
+                            <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 max-h-32 overflow-y-auto space-y-1.5">
+                              {projectDetails.agent_state.gaps.map((g: any) => (
+                                <div key={g.id} className="border-b border-slate-900 pb-1">
+                                  <span className={g.blocking ? "text-rose-400 font-bold" : "text-amber-400 font-bold"}>
+                                    [{g.blocking ? 'BLOCKING' : 'INFO'}]
+                                  </span> {g.description}
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={() => { setReviewStage('GAP_DETECTION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              onClick={() => { setReviewStage('GAP_DETECTION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow-md shadow-emerald-600/30"
+                            >
+                              Approve Stage 2
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stage 3: Quality Validation Approval */}
+                      {(projectDetails.agent_state.phase === 'awaiting_validation_approval') && (
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 3: Quality Validation Approval</span>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Review quality scores. Require overall quality index &ge; 70 to proceed.
+                          </p>
+                          {projectDetails.agent_state.document?.quality_result && (
+                            <div className="bg-slate-950 p-3 rounded border border-slate-800 text-[10px] text-slate-400 space-y-2">
+                              <div className="flex justify-between items-center text-xs">
+                                <span className="font-bold">Overall Score:</span>
+                                <span className={projectDetails.agent_state.document.quality_result.valid ? "text-emerald-400 font-black text-sm" : "text-rose-400 font-black text-sm"}>
+                                  {projectDetails.agent_state.document.quality_result.overall_score}/100
+                                </span>
+                              </div>
+                              <div className="space-y-1">
+                                {Object.entries(projectDetails.agent_state.document.quality_result.scores).map(([k, v]: any) => (
+                                  <div key={k} className="space-y-0.5">
+                                    <div className="flex justify-between text-[9px] uppercase font-semibold">
+                                      <span>{k}</span>
+                                      <span>{v}</span>
+                                    </div>
+                                    <div className="h-1 bg-slate-900 rounded overflow-hidden">
+                                      <div className="h-full bg-indigo-500 rounded" style={{ width: `${v}%` }} />
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={() => { setReviewStage('VALIDATION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              onClick={() => { setReviewStage('VALIDATION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow-md shadow-emerald-600/30"
+                            >
+                              Approve Stage 3
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Stage 4: Finalization Approval */}
+                      {(projectDetails.agent_state.phase === 'awaiting_finalization_approval' || 
+                        projectDetails.agent_state.phase === 'AWAITING_APPROVAL') && (
+                        <div className="space-y-3">
+                          <span className="text-[10px] font-bold text-amber-400 bg-amber-400/10 px-2 py-0.5 rounded-full uppercase tracking-wider">Stage 4: Finalization Sign-Off</span>
+                          <p className="text-[11px] text-slate-400 leading-relaxed">
+                            Confirm sign-off on generated requirements backlog (Epics, Features, User Stories, and Acceptance Criteria) to complete SRS compilation.
+                          </p>
+                          <div className="bg-slate-950 p-2.5 rounded border border-slate-800 text-[10px] text-slate-400 space-y-1">
+                            <div><span className="font-bold text-slate-300">Epics:</span> {projectDetails.agent_state.document?.epics?.length || 0}</div>
+                            <div><span className="font-bold text-slate-300">Features:</span> {projectDetails.agent_state.document?.features?.length || 0}</div>
+                            <div><span className="font-bold text-slate-300">Stories:</span> {projectDetails.agent_state.document?.user_stories?.length || 0}</div>
+                            <div><span className="font-bold text-slate-300">Criteria:</span> {projectDetails.agent_state.document?.acceptance_criteria?.length || 0}</div>
+                          </div>
+                          <div className="flex gap-2 pt-2">
+                            <button 
+                              onClick={() => { setReviewStage('FINALIZATION'); setReviewStatus('REJECTED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-rose-500/10 text-rose-400 border border-rose-500/20 hover:bg-rose-500/20 rounded font-bold text-xs"
+                            >
+                              Reject
+                            </button>
+                            <button 
+                              onClick={() => { setReviewStage('FINALIZATION'); setReviewStatus('APPROVED'); setShowReviewModal(true); }}
+                              className="flex-1 py-1.5 bg-emerald-600 hover:bg-emerald-500 text-white rounded font-bold text-xs shadow-md shadow-emerald-600/30"
+                            >
+                              Finalize & Approve SRS
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* Completed / Approved State */}
+                      {projectDetails.project.status === 'APPROVED' && (
+                        <div className="space-y-2 text-center py-2 bg-emerald-500/10 border border-emerald-500/20 rounded-lg p-3">
+                          <CheckCircle2 className="h-5 w-5 text-emerald-400 mx-auto" />
+                          <span className="text-xs font-black text-emerald-400 uppercase tracking-wider block">SRS Approved & Completed</span>
+                          <span className="text-[10px] text-slate-400 block">Phase locked. Downstream Design Agent is ready.</span>
+                        </div>
+                      )}
+                    </div>
 
                   </div>
 
