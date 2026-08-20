@@ -638,6 +638,47 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
+            {selectedProjectId && (
+              <div className="flex items-center gap-1.5 bg-slate-800/80 border border-slate-700/80 p-1 rounded-lg">
+                <span className="text-[10px] font-extrabold text-indigo-400 uppercase tracking-widest px-2 flex items-center gap-1">
+                  <FileDown className="h-3.5 w-3.5 text-indigo-400" />
+                  Export SRS:
+                </span>
+                <button 
+                  onClick={() => downloadDocument('requirements', 'pdf')}
+                  title="Download SRS standard PDF document"
+                  className="flex items-center gap-1 py-1 px-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white rounded text-xs font-bold transition-all border border-indigo-500/30"
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  PDF
+                </button>
+                <button 
+                  onClick={() => downloadDocument('requirements', 'docx')}
+                  title="Download SRS Word (.docx) document"
+                  className="flex items-center gap-1 py-1 px-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white rounded text-xs font-bold transition-all border border-indigo-500/30"
+                >
+                  <FileDown className="h-3.5 w-3.5" />
+                  Word
+                </button>
+                <button 
+                  onClick={() => downloadDocument('requirements', 'markdown')}
+                  title="Download SRS Markdown (.md) document"
+                  className="flex items-center gap-1 py-1 px-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white rounded text-xs font-bold transition-all border border-indigo-500/30"
+                >
+                  <FileText className="h-3.5 w-3.5" />
+                  MD
+                </button>
+                <button 
+                  onClick={() => downloadDocument('requirements', 'json')}
+                  title="Download SRS raw JSON data"
+                  className="flex items-center gap-1 py-1 px-2.5 bg-indigo-600/20 hover:bg-indigo-600/40 text-indigo-300 hover:text-white rounded text-xs font-bold transition-all border border-indigo-500/30"
+                >
+                  <FileJson className="h-3.5 w-3.5" />
+                  JSON
+                </button>
+              </div>
+            )}
+
             <div className="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg">
               <Sparkles className="h-4 w-4 text-indigo-400" />
               <select 
@@ -927,12 +968,35 @@ export default function App() {
                           </div>
                         </div>
                       ) : (
-                        <div className="bg-[#0f1422] border border-slate-800/80 rounded-xl p-8 text-center space-y-3">
+                        <div className="bg-[#0f1422] border border-slate-800/80 rounded-xl p-8 text-center space-y-4">
                           <Lock className="h-8 w-8 text-slate-600 mx-auto" />
-                          <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Requirements Specification Pending</h4>
+                          <h4 className="font-extrabold text-xs text-slate-400 uppercase tracking-widest">Requirements Specification Pending Final Approval</h4>
                           <p className="text-xs text-slate-500 max-w-md mx-auto leading-relaxed">
-                            The Business Analyst has not compiled or approved the software requirements specification (SRS) for this project yet. Open the Requirement tab to chat and gather requirements.
+                            Requirements are currently being compiled or reviewed in the Gated Approval Pipeline. You can export the current requirement draft document below at any time.
                           </p>
+                          <div className="flex items-center justify-center gap-2 pt-2">
+                            <button
+                              onClick={() => downloadDocument('requirements', 'pdf')}
+                              className="flex items-center gap-2 py-2 px-4 rounded-lg bg-indigo-600 hover:bg-indigo-500 text-white font-bold text-xs transition-all shadow-md"
+                            >
+                              <FileDown className="h-4 w-4" />
+                              Export PDF Draft
+                            </button>
+                            <button
+                              onClick={() => downloadDocument('requirements', 'docx')}
+                              className="flex items-center gap-2 py-2 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all border border-slate-700"
+                            >
+                              <FileDown className="h-4 w-4" />
+                              Export Word Draft
+                            </button>
+                            <button
+                              onClick={() => downloadDocument('requirements', 'markdown')}
+                              className="flex items-center gap-2 py-2 px-4 rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 font-bold text-xs transition-all border border-slate-700"
+                            >
+                              <FileText className="h-4 w-4" />
+                              Export Markdown
+                            </button>
+                          </div>
                         </div>
                       )}
                     </div>
@@ -1379,7 +1443,7 @@ export default function App() {
                     </div>
 
                     {/* View/Download SRS Panel */}
-                    {projectDetails.srs && (
+                    {selectedProjectId && (
                       <div className="bg-slate-900/30 border border-slate-800 rounded-xl p-4 space-y-3">
                         <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Compiled Documentation</span>
                         
