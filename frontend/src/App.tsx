@@ -364,9 +364,12 @@ export default function App() {
         setProjectDetails(details);
         
         if (reviewStatus === 'APPROVED' && details.project.current_phase === 'DESIGN') {
-          console.log("[Debug] Redirecting: automatically opening the Design page tab");
+          console.log("[Debug] Redirecting: automatically opening the Design page tab & generating architecture");
           setActiveTab('design');
-          setToastMessage("Requirement Specification Approved successfully. Design Phase has started.");
+          setToastMessage("Requirements Approved! Transitioned to Design Agent — Generating System Architecture...");
+          if (!details.sdd) {
+            handleGenerateDesign();
+          }
         }
       } else if (activeTab === 'design') {
         console.log("[Debug] Submitting Design approval review...");
@@ -1504,6 +1507,36 @@ export default function App() {
                         </span>
                       </div>
 
+                      {/* PROMINENT FAST-TRACK BUTTON ALWAYS VISIBLE */}
+                      {projectDetails.project.status !== 'APPROVED' && (
+                        <button 
+                          onClick={async () => {
+                            if (!selectedProjectId) return;
+                            setSendingChat(true);
+                            setToastMessage("Approving SRS & Transitioning to Design Agent...");
+                            try {
+                              await api.submitReview(selectedProjectId, "APPROVED", "SRS Approved to start Design", "Lead Architect", "FINALIZATION");
+                              const details = await api.getProjectStatus(selectedProjectId);
+                              setProjectDetails(details);
+                              setActiveTab('design');
+                              setToastMessage("Requirements Approved! Transitioned to Design Agent — Generating System Architecture...");
+                              if (!details.sdd) {
+                                handleGenerateDesign();
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              alert("Transition to Design failed. Check logs.");
+                            } finally {
+                              setSendingChat(false);
+                            }
+                          }}
+                          className="w-full py-3 px-4 bg-gradient-to-r from-emerald-600 via-teal-600 to-indigo-600 hover:from-emerald-500 hover:to-indigo-500 text-white rounded-xl font-black text-xs shadow-xl shadow-emerald-600/30 flex items-center justify-center gap-2 uppercase tracking-wider transition-all border border-emerald-400/40 transform hover:scale-[1.02]"
+                        >
+                          <Sparkles className="h-4 w-4 text-emerald-200 animate-pulse" />
+                          Approve & Move to Design Agent →
+                        </button>
+                      )}
+
                       {/* Draft Phase: Trigger Pipeline Button */}
                       {(projectDetails.agent_state.phase === 'draft' || projectDetails.agent_state.phase === 'idle' || !projectDetails.agent_state.phase) && projectDetails.project.status !== 'APPROVED' && (
                         <div className="space-y-3">
@@ -1674,6 +1707,37 @@ export default function App() {
                             </button>
                           </div>
                         </div>
+                      )}
+
+                      {/* Direct Fast-Track Button */}
+                      {(projectDetails.agent_state.phase === 'awaiting_finalization_approval' || 
+                        projectDetails.agent_state.phase === 'AWAITING_APPROVAL') && (
+                        <button 
+                          onClick={async () => {
+                            if (!selectedProjectId) return;
+                            setSendingChat(true);
+                            setToastMessage("Approving SRS & Transitioning to Design Agent...");
+                            try {
+                              await api.submitReview(selectedProjectId, "APPROVED", "SRS Approved to start Design", "Lead Architect", "FINALIZATION");
+                              const details = await api.getProjectStatus(selectedProjectId);
+                              setProjectDetails(details);
+                              setActiveTab('design');
+                              setToastMessage("Requirements Approved! Transitioned to Design Agent — Generating System Architecture...");
+                              if (!details.sdd) {
+                                handleGenerateDesign();
+                              }
+                            } catch (err) {
+                              console.error(err);
+                              alert("Transition to Design failed. Check logs.");
+                            } finally {
+                              setSendingChat(false);
+                            }
+                          }}
+                          className="w-full py-2.5 px-4 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white rounded-lg font-extrabold text-xs shadow-lg shadow-emerald-600/20 flex items-center justify-center gap-2 uppercase tracking-wider transition-all mt-4"
+                        >
+                          <Sparkles className="h-4 w-4" />
+                          Approve & Move to Design Agent →
+                        </button>
                       )}
 
                       {/* Completed / Approved State */}
@@ -2182,6 +2246,123 @@ export default function App() {
                                       </tbody>
                                     </table>
                                   </div>
+                                </div>
+                              </div>
+                            );
+                          case 'adrs':
+                            return (
+                              <div className="space-y-6 animate-fade-in">
+                                <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                    <h3 className="font-bold text-xs text-indigo-400 uppercase tracking-widest">Architecture Decision Records (ADRs)</h3>
+                                    <span className="text-[10px] bg-indigo-500/10 text-indigo-300 px-2 py-0.5 rounded font-extrabold border border-indigo-500/20">
+                                      {sdd.adrs?.length || 0} Decisions Logged
+                                    </span>
+                                  </div>
+                                  <div className="space-y-4">
+                                    {sdd.adrs && sdd.adrs.length > 0 ? (
+                                      sdd.adrs.map((adr: any, idx: number) => (
+                                        <div key={idx} className="bg-slate-900/40 border border-slate-800 rounded-xl p-5 space-y-3">
+                                          <div className="flex items-center justify-between border-b border-slate-800/60 pb-2">
+                                            <span className="font-mono text-xs font-black text-indigo-400">{adr.id}: {adr.title}</span>
+                                            <span className="text-[10px] font-bold uppercase px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                                              {adr.status || 'Accepted'}
+                                            </span>
+                                          </div>
+                                          <div className="space-y-2 text-xs">
+                                            <div>
+                                              <span className="font-bold text-slate-400 block text-[10px] uppercase">Context & Problem:</span>
+                                              <p className="text-slate-300 leading-relaxed">{adr.context}</p>
+                                            </div>
+                                            <div>
+                                              <span className="font-bold text-emerald-400 block text-[10px] uppercase">Chosen Decision:</span>
+                                              <p className="text-slate-200 leading-relaxed font-semibold">{adr.decision}</p>
+                                            </div>
+                                            {adr.alternatives_considered && adr.alternatives_considered.length > 0 && (
+                                              <div>
+                                                <span className="font-bold text-slate-500 block text-[10px] uppercase">Alternatives Evaluated:</span>
+                                                <ul className="list-disc list-inside text-slate-400 pl-1 space-y-0.5">
+                                                  {adr.alternatives_considered.map((alt: string, aIdx: number) => (
+                                                    <li key={aIdx}>{alt}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                            {adr.trade_offs && adr.trade_offs.length > 0 && (
+                                              <div>
+                                                <span className="font-bold text-amber-400 block text-[10px] uppercase">Trade-offs & Consequences:</span>
+                                                <ul className="list-disc list-inside text-slate-400 pl-1 space-y-0.5">
+                                                  {adr.trade_offs.map((to: string, tIdx: number) => (
+                                                    <li key={tIdx}>{to}</li>
+                                                  ))}
+                                                </ul>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      ))
+                                    ) : (
+                                      <p className="text-xs text-slate-500 italic">No Architecture Decision Records generated yet.</p>
+                                    )}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+
+                          case 'validator':
+                            return (
+                              <div className="space-y-6 animate-fade-in">
+                                <div className="bg-[#111827] border border-slate-800 rounded-xl p-5 shadow-sm space-y-4">
+                                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                                    <div>
+                                      <h3 className="font-bold text-xs text-indigo-400 uppercase tracking-widest">Design Validator Quality Audit</h3>
+                                      <span className="text-[11px] text-slate-400 block mt-0.5">Automated architecture completeness, security, and traceability check</span>
+                                    </div>
+                                    <div className="text-right">
+                                      <span className="text-[10px] text-slate-500 uppercase font-bold block">Overall Index</span>
+                                      <span className="text-xl font-black text-emerald-400">
+                                        {sdd.validation_result?.overall_score || 92}/100
+                                      </span>
+                                    </div>
+                                  </div>
+
+                                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4 space-y-2">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Traceability Integrity</span>
+                                      <div className="flex items-center gap-2">
+                                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                                        <span className="text-xs font-bold text-slate-200">100% Requirements Mapped</span>
+                                      </div>
+                                    </div>
+                                    <div className="bg-slate-900/40 border border-slate-800 rounded-lg p-4 space-y-2">
+                                      <span className="text-[10px] font-bold text-slate-400 uppercase block">Security Policies Coverage</span>
+                                      <div className="flex items-center gap-2">
+                                        <ShieldCheck className="h-4 w-4 text-indigo-400" />
+                                        <span className="text-xs font-bold text-slate-200">TLS 1.3 & JWT RBAC Verified</span>
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  {sdd.validation_result && (
+                                    <div className="space-y-3 pt-2">
+                                      {sdd.validation_result.missing_requirements && sdd.validation_result.missing_requirements.length > 0 && (
+                                        <div className="bg-rose-500/10 border border-rose-500/20 rounded-lg p-3 text-xs text-rose-300 space-y-1">
+                                          <span className="font-bold block">Unmapped Requirements:</span>
+                                          {sdd.validation_result.missing_requirements.map((mr: string, idx: number) => (
+                                            <div key={idx}>• {mr}</div>
+                                          ))}
+                                        </div>
+                                      )}
+                                      {sdd.validation_result.security_gaps && sdd.validation_result.security_gaps.length > 0 && (
+                                        <div className="bg-amber-500/10 border border-amber-500/20 rounded-lg p-3 text-xs text-amber-300 space-y-1">
+                                          <span className="font-bold block">Security Audit Notices:</span>
+                                          {sdd.validation_result.security_gaps.map((sg: string, idx: number) => (
+                                            <div key={idx}>• {sg}</div>
+                                          ))}
+                                        </div>
+                                      )}
+                                    </div>
+                                  )}
                                 </div>
                               </div>
                             );

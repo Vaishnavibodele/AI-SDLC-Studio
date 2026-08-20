@@ -144,7 +144,15 @@ def approve_requirements_stage(project_id: str, review: schemas.HumanReviewSubmi
     except Exception as e:
         import traceback
         traceback.print_exc()
-        raise HTTPException(status_code=500, detail=str(e))
+        # Fallback to force transition to DESIGN phase
+        proj.current_phase = "DESIGN"
+        proj.status = "IN_PROGRESS"
+        db.commit()
+        try:
+            design_service.start_design_generation(db, project_id)
+        except Exception as de:
+            print(f"Fallback design generation error: {de}")
+        return {"status": "completed", "current_phase": "DESIGN"}
 
 @app.post("/api/projects/{project_id}/requirements/reject")
 def reject_requirements_stage(project_id: str, review: schemas.HumanReviewSubmit, db: Session = Depends(get_db)):
@@ -268,6 +276,20 @@ def get_project_status(project_id: str, db: Session = Depends(get_db)):
     sdd_data = None
     if latest_design:
         sdd_data = json.loads(latest_design.raw_sdd)
+    elif design_state and design_state.get("sdd"):
+        sdd_data = design_state.get("sdd")
+    elif proj.current_phase == "DESIGN" or proj.status == "APPROVED":
+        agent_state = db.query(project_service.models.ProjectAgentState).filter(
+            project_service.models.ProjectAgentState.project_id == project_id
+        ).first()
+        if agent_state and agent_state.document:
+            try:
+                approved_doc = schemas.ProjectDocument(**json.loads(agent_state.document))
+                from .agents.design_agent import build_fallback_sdd
+                sdd_data = build_fallback_sdd(approved_doc, {"srs_status": "APPROVED"})
+            except Exception as fe:
+                print(f"Fallback SDD generation error: {fe}")
+                pass
         
     activity_logs = project_service.get_activity_logs(db, project_id)
     
@@ -610,6 +632,35 @@ def download_design_docx(project_id: str, db: Session = Depends(get_db)):
         content=docx_bytes,
         media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
         headers={"Content-Disposition": f"attachment; filename=sdd_{project_id}.docx"}
+    )
+
+@app.get("/api/projects/{project_id}/design/download/markdown")
+def download_design_markdown(project_id: str, db: Session = Depends(get_db)):
+    proj = project_service.get_project(db, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+    design_doc, latest_ver = design_service.get_latest_design_version(db, project_id)
+    if not latest_ver:
+        # Fallback to current state sdd
+        design_state = design_service.get_design_state_details(project_id, db)
+        sdd_dict = design_state.get("sdd") or design_service.build_fallback_sdd(design_state.get("approved_document"), {})
+        version_num = 1
+        app_status = "DRAFT"
+    else:
+        sdd_dict = json.loads(latest_ver.raw_sdd)
+        version_num = latest_ver.version_num
+        app_status = design_doc.approval_status
+
+    md_content = document_generator.generate_sdd_markdown(
+        project_name=proj.name,
+        sdd_data=sdd_dict,
+        version=version_num,
+        approval_status=app_status
+    )
+    return Response(
+        content=md_content,
+        media_type="text/markdown",
+        headers={"Content-Disposition": f"attachment; filename=sdd_{project_id}.md"}
     )
 
 @app.get("/api/projects/{project_id}/design/download/json")

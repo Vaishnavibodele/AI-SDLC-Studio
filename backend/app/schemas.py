@@ -230,6 +230,25 @@ class ActivityLogResponse(BaseModel):
 
 
 # --- SDD Structures ---
+class ADRItem(BaseModel):
+    id: str = Field(..., description="ADR ID, e.g., ADR-001")
+    title: str = Field(..., description="Title of the architectural decision")
+    status: str = Field("Accepted", description="Status: Proposed, Accepted, Rejected, Superseded")
+    context: str = Field(..., description="Context and problem statement requiring this decision")
+    decision: str = Field(..., description="Chosen architectural decision and rationale")
+    alternatives_considered: List[str] = Field(default_factory=list, description="Alternatives evaluated")
+    trade_offs: List[str] = Field(default_factory=list, description="Consequences, trade-offs, and risks")
+
+class DesignValidationResult(BaseModel):
+    valid: bool = Field(True, description="Whether design passed architectural validation")
+    overall_score: int = Field(85, description="Overall architecture quality index out of 100")
+    missing_requirements: List[str] = Field(default_factory=list, description="Requirements not covered in design")
+    unnecessary_components: List[str] = Field(default_factory=list, description="Components without linked requirement")
+    missing_apis_or_tables: List[str] = Field(default_factory=list, description="Gaps in API endpoints or DB tables")
+    security_gaps: List[str] = Field(default_factory=list, description="Identified security gaps")
+    nfr_coverage_gaps: List[str] = Field(default_factory=list, description="Unaddressed quality or NFR demands")
+    broken_traceability: List[str] = Field(default_factory=list, description="Traceability matrix broken links")
+
 class ComponentItem(BaseModel):
     name: str = Field(..., description="Name of the software component, e.g., Auth Service")
     responsibility: str = Field(..., description="Key responsibility of this component")
@@ -261,11 +280,12 @@ class ApiEndpoint(BaseModel):
     description: str = Field(..., description="Function and usage of the API endpoint")
 
 class TraceabilityMatrixItem(BaseModel):
-    requirement_id: str = Field(..., description="SRS Requirement ID, e.g. REQ-001")
+    requirement_id: str = Field(..., description="SRS Requirement ID, e.g. REQ-F001")
     module: str = Field(..., description="Target system module/component implementing the requirement")
     api_endpoint: str = Field(..., description="API Endpoint path mapping to the requirement")
     db_table: str = Field(..., description="Database table storing relevant entities")
     ui_screen: str = Field(..., description="UI Interface/Screen exposing the behavior")
+    adr_id: Optional[str] = Field("", description="Linked Architecture Decision Record ID")
 
 # --- 40-Section SDD Output ---
 class SDDOutput(BaseModel):
@@ -329,11 +349,13 @@ class SDDOutput(BaseModel):
     backup_strategy: str = Field(..., description="Recovery objective levels (RPO/RTO), rotation rules, and locations")
     disaster_recovery_runbook: str = Field(..., description="Failover procedures, replica syncs, and emergency checklists")
     
-    # Sections 37-40: Risks, Traceability
+    # Sections 37-40: Risks, Traceability & ADRs
     architectural_risks: List[str] = Field(default_factory=list, description="List of technical risks, limitations, and mitigations")
     design_assumptions: List[str] = Field(default_factory=list, description="Key design assumptions made during system definition")
     future_enhancements: List[str] = Field(default_factory=list, description="Future features scope scale plans mapping")
     traceability_matrix: List[TraceabilityMatrixItem] = Field(default_factory=list, description="Requirement Traceability Matrix")
+    adrs: List[ADRItem] = Field(default_factory=list, description="Architecture Decision Records explaining major design decisions")
+    validation_result: Optional[DesignValidationResult] = Field(None, description="Automated design validation and audit results")
 
 class DesignResponse(BaseModel):
     id: str

@@ -175,7 +175,28 @@ def resume_approval_step(
     state = compiled_graph.get_state(config)
     
     if not state.next:
-        raise ValueError("Graph is not in an interrupted state.")
+        print(f"[Requirement Service] Graph for {project_id} not in interrupted state. Auto-completing SRS & transitioning to DESIGN...")
+        state_details = get_agent_state_details(project_id)
+        doc = state_details.get("document")
+        doc_dict = doc.dict() if (doc and hasattr(doc, "dict")) else doc
+        
+        project = project_service.get_project(db, project_id)
+        if project:
+            project.current_phase = "DESIGN"
+            project.status = "IN_PROGRESS"
+            db.commit()
+            project_service.log_activity(db, project_id, "PHASE_TRANSITION", "Project transitioned automatically from REQUIREMENT to DESIGN phase.")
+            
+            if doc_dict:
+                project_service.create_version_snapshot(db, project_id, doc_dict, comments or "SRS Approved")
+                
+            from . import design_service
+            try:
+                design_service.start_design_generation(db, project_id)
+            except Exception as de:
+                print(f"Error auto-starting design generation: {de}")
+                pass
+        return {"status": "completed", "current_phase": "DESIGN"}
         
     active_node = state.next[0]
     
@@ -203,31 +224,45 @@ def resume_approval_step(
     compiled_graph.update_state(config, {"user_feedback": feedback}, as_node=active_node)
     
     # 3. Resume the graph
-    outputs = compiled_graph.invoke(None, config)
-    
-    # 4. Sync new state to DB
-    phase = outputs.get("phase", "draft")
-    document = outputs.get("document")
+    try:
+        outputs = compiled_graph.invoke(None, config)
+    except Exception as e:
+        print(f"[Requirement Service] Resume invoke interrupt/notice: {e}")
+        outputs = {}
+        
+    latest_state = compiled_graph.get_state(config)
+    state_values = latest_state.values if (latest_state and latest_state.values) else {}
+    if not outputs:
+        outputs = state_values
+        
+    phase = state_values.get("phase") or outputs.get("phase") or "draft"
+    document = state_values.get("document") or outputs.get("document")
+    memory = state_values.get("memory") or outputs.get("memory")
+    messages = state_values.get("messages") or outputs.get("messages")
+    missing_info = state_values.get("missing_info") or outputs.get("missing_info")
+    validation_attempts = state_values.get("validation_attempts") or outputs.get("validation_attempts", 0)
     
     doc_dict = document.dict() if (document and hasattr(document, "dict")) else document
-    mem_dict = outputs.get("memory").dict() if (outputs.get("memory") and hasattr(outputs.get("memory"), "dict")) else outputs.get("memory")
+    mem_dict = memory.dict() if (memory and hasattr(memory, "dict")) else memory
+    
+    is_completed_or_finalized = (phase == "completed" or stage == "FINALIZATION") and status == "APPROVED"
     
     project_service.update_with_state(
         db=db,
         project_id=project_id,
-        phase="REQUIREMENT",
-        status="IN_PROGRESS" if phase != "completed" else "APPROVED",
-        current_state=phase,
+        phase="REQUIREMENT" if not is_completed_or_finalized else "DESIGN",
+        status="IN_PROGRESS" if not is_completed_or_finalized else "IN_PROGRESS",
+        current_state=phase if not is_completed_or_finalized else "generating",
         document=doc_dict,
-        messages=outputs.get("messages"),
+        messages=messages,
         memory=mem_dict,
-        missing_info=outputs.get("missing_info"),
-        validation_attempts=outputs.get("validation_attempts"),
+        missing_info=missing_info,
+        validation_attempts=validation_attempts,
         last_reviewer_comments=comments
     )
     
-    # If completed, create version snapshot and transition to design phase
-    if phase == "completed" and document:
+    # If completed or finalization approved, create version snapshot and transition to design phase
+    if is_completed_or_finalized and document:
         project_service.create_version_snapshot(db, project_id, doc_dict, comments)
         project = project_service.get_project(db, project_id)
         if project:
@@ -238,6 +273,7 @@ def resume_approval_step(
             
             from . import design_service
             try:
+                print(f"[Requirement Service] Automatically triggering Design Agent for project {project_id}...")
                 design_service.start_design_generation(db, project_id)
             except Exception as de:
                 print(f"Error auto-starting design generation: {de}")

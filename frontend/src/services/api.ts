@@ -71,8 +71,11 @@ export interface ProjectStatusResponse {
     phase: string;
     missing_info: string[];
     validation_attempts: number;
+    document?: any;
   };
+  design_agent_state?: any;
   srs: SRSOutput | null;
+  sdd?: any | null;
   logs: Log[];
 }
 

@@ -883,3 +883,94 @@ def generate_sdd_docx(project_name: str, sdd_data: dict, version: int, approval_
     buffer = io.BytesIO()
     doc.save(buffer)
     return buffer.getvalue()
+
+
+def generate_sdd_markdown(project_name: str, sdd_data: dict, version: int, approval_status: str) -> str:
+    """Generates clean GitHub-Flavored Markdown for the System Design Specification."""
+    md = []
+    md.append(f"# System Design Specification (SDD)")
+    md.append(f"**Project**: {project_name}")
+    md.append(f"**Version**: {version}.0.0")
+    md.append(f"**Approval Status**: {approval_status}")
+    md.append(f"**Generated**: {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+    
+    sections = [
+        ("Executive Introduction", "introduction"),
+        ("Design Goals & Priorities", "design_goals"),
+        ("System Overview", "system_overview"),
+        ("High-Level Architecture", "high_level_architecture"),
+        ("Low-Level Architecture", "low_level_architecture"),
+        ("Module & Package Breakdown", "module_breakdown"),
+        ("Database Design Overview", "database_design_overview"),
+        ("API Design Overview", "api_design_overview"),
+        ("Authentication & Authorization Flow", "authentication_flow"),
+        ("Security Design Policies", "security_design_policies"),
+        ("Technology Stack", "technology_stack"),
+        ("Performance Architecture", "performance_design"),
+        ("Scalability Architecture", "scalability_design"),
+        ("Availability & Reliability", "availability_design"),
+        ("Monitoring & Observability", "monitoring_strategy"),
+        ("Backup & Disaster Recovery", "backup_strategy")
+    ]
+    
+    for label, key in sections:
+        val = sdd_data.get(key)
+        md.append(f"## {label}")
+        if not val:
+            md.append("Not specified.\n")
+        elif isinstance(val, list):
+            for item in val:
+                md.append(f"- {item}")
+            md.append("")
+        else:
+            md.append(f"{val}\n")
+            
+    # Architecture Decision Records (ADRs)
+    adrs = sdd_data.get("adrs", [])
+    if adrs:
+        md.append("## Architecture Decision Records (ADRs)")
+        for adr in adrs:
+            md.append(f"### {adr.get('id', 'ADR')}: {adr.get('title', '')}")
+            md.append(f"**Status**: {adr.get('status', 'Accepted')}")
+            md.append(f"**Context**: {adr.get('context', '')}")
+            md.append(f"**Decision**: {adr.get('decision', '')}")
+            if adr.get('trade_offs'):
+                md.append("**Trade-offs & Consequences**:")
+                for t in adr.get('trade_offs', []):
+                    md.append(f"- {t}")
+            md.append("")
+            
+    # API Endpoints Table
+    apis = sdd_data.get("api_endpoints", [])
+    if apis:
+        md.append("## API Endpoints Specification")
+        md.append("| Method | Path | Request Schema | Response Schema | Description |")
+        md.append("|---|---|---|---|---|")
+        for a in apis:
+            md.append(f"| `{a.get('method', 'GET')}` | `{a.get('path', '')}` | `{a.get('request_body', 'None')}` | `{a.get('response_body', '')}` | {a.get('description', '')} |")
+        md.append("")
+        
+    # Database Tables
+    tables = sdd_data.get("database_tables", [])
+    if tables:
+        md.append("## Database Schema Specification")
+        for tbl in tables:
+            md.append(f"### Table: `{tbl.get('name')}` (Primary Key: `{tbl.get('primary_key')}`)")
+            md.append("| Column | Type | Nullable | Description |")
+            md.append("|---|---|---|---|")
+            for col in tbl.get("columns", []):
+                req = "YES" if col.get("nullable") else "NO"
+                md.append(f"| `{col.get('name')}` | `{col.get('type')}` | {req} | {col.get('description', '')} |")
+            md.append("")
+            
+    # Traceability Matrix
+    matrix = sdd_data.get("traceability_matrix", [])
+    if matrix:
+        md.append("## Requirement Traceability Matrix")
+        md.append("| Requirement ID | Module Component | API Endpoint | DB Table | UI Interface | ADR |")
+        md.append("|---|---|---|---|---|---|")
+        for item in matrix:
+            md.append(f"| `{item.get('requirement_id', '')}` | {item.get('module', '')} | `{item.get('api_endpoint', '')}` | `{item.get('db_table', '')}` | {item.get('ui_screen', '')} | `{item.get('adr_id', '')}` |")
+        md.append("")
+        
+    return "\n".join(md)

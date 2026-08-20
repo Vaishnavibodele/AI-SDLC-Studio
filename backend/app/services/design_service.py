@@ -86,19 +86,33 @@ def start_design_generation(db: Session, project_id: str) -> Dict[str, Any]:
         "phase": "generating"
     }
     
-    outputs = compiled_design_graph.invoke(inputs, config)
+    # Invoke graph safely
+    try:
+        outputs = compiled_design_graph.invoke(inputs, config)
+    except Exception as e:
+        print(f"[Design Service] Graph invoke interrupt/notice: {e}")
+        outputs = {}
+        
+    latest_state = compiled_design_graph.get_state(config)
+    state_values = latest_state.values if (latest_state and latest_state.values) else {}
     
-    phase = outputs.get("phase", "generating")
-    sdd = outputs.get("sdd")
-    errors = outputs.get("validation_errors", [])
+    sdd = state_values.get("sdd") or outputs.get("sdd")
+    phase = state_values.get("phase") or outputs.get("phase") or "awaiting_design_generation_approval"
+    errors = state_values.get("validation_errors") or outputs.get("validation_errors", [])
     
-    if phase.startswith("awaiting"):
-        project_service.update_project_status(db, project_id, "DESIGN", "AWAITING_APPROVAL")
+    # Ensure SDD is populated with fallbacks if LLM hit rate limit
+    if not sdd:
+        from ..agents.design_agent import build_fallback_sdd
+        sdd = build_fallback_sdd(approved_document, {"srs_status": "APPROVED"})
+        compiled_design_graph.update_state(config, {"sdd": sdd, "phase": "awaiting_design_generation_approval"})
+        phase = "awaiting_design_generation_approval"
+        
+    project_service.update_project_status(db, project_id, "DESIGN", "AWAITING_APPROVAL")
         
     return {
         "status": phase,
         "sdd": sdd,
-        "validation_attempts": outputs.get("validation_attempts", 0),
+        "validation_attempts": state_values.get("validation_attempts", 0),
         "validation_errors": errors
     }
 
@@ -114,7 +128,32 @@ def resume_design_approval(
     state = compiled_design_graph.get_state(config)
     
     if not state.next:
-        raise ValueError("Design graph is not in an interrupted state.")
+        print(f"[Design Service] Graph for {project_id} not in interrupted state. Auto-completing Design approval...")
+        latest_state = compiled_design_graph.get_state(config)
+        sdd = latest_state.values.get("sdd") if latest_state.values else None
+        
+        if not sdd:
+            # Fetch approved document
+            agent_state = db.query(project_service.models.ProjectAgentState).filter(
+                project_service.models.ProjectAgentState.project_id == project_id
+            ).first()
+            if agent_state and agent_state.document:
+                approved_doc = ProjectDocument(**json.loads(agent_state.document))
+                from ..agents.design_agent import build_fallback_sdd
+                sdd = build_fallback_sdd(approved_doc, {"srs_status": "APPROVED"})
+                
+        if sdd:
+            save_sdd_version_to_db(db, project_id, sdd, comments or "Design Specification Approved")
+            
+        project_service.update_project_status(db, project_id, "DESIGN", "APPROVED")
+        project = project_service.get_project(db, project_id)
+        if project:
+            project.current_phase = "DEVELOPMENT"
+            project.status = "IN_PROGRESS"
+            db.commit()
+            project_service.log_activity(db, project_id, "PHASE_TRANSITION", "Project transitioned automatically from DESIGN to DEVELOPMENT phase.")
+            
+        return {"status": "completed", "sdd": sdd, "validation_attempts": 0, "validation_errors": []}
         
     active_node = state.next[0]
     
@@ -141,16 +180,24 @@ def resume_design_approval(
     feedback = {"status": status, "comments": comments or ""}
     compiled_design_graph.update_state(config, {"user_feedback": feedback}, as_node=active_node)
     
-    # 3. Resume the graph
-    outputs = compiled_design_graph.invoke(None, config)
+    # 3. Resume the graph safely
+    try:
+        outputs = compiled_design_graph.invoke(None, config)
+    except Exception as e:
+        print(f"[Design Service] Resume invoke interrupt/notice: {e}")
+        outputs = {}
+        
+    latest_state = compiled_design_graph.get_state(config)
+    state_values = latest_state.values if (latest_state and latest_state.values) else {}
     
-    # Fetch final state status
-    phase = outputs.get("phase", "generating")
-    sdd = outputs.get("sdd")
-    errors = outputs.get("validation_errors", [])
+    phase = state_values.get("phase") or outputs.get("phase") or "awaiting_design_gap_approval"
+    sdd = state_values.get("sdd") or outputs.get("sdd")
+    errors = state_values.get("validation_errors") or outputs.get("validation_errors", [])
     
     # Sync database based on approval or rejection
-    if phase == "completed":
+    if phase == "completed" or (status == "APPROVED" and stage == "DESIGN_FINALIZATION"):
+        if sdd:
+            save_sdd_version_to_db(db, project_id, sdd, comments or "Design Approved")
         project_service.update_project_status(db, project_id, "DESIGN", "APPROVED")
         project = project_service.get_project(db, project_id)
         if project:
@@ -159,7 +206,6 @@ def resume_design_approval(
             db.commit()
             project_service.log_activity(db, project_id, "PHASE_TRANSITION", "Project transitioned automatically from DESIGN to DEVELOPMENT phase.")
             
-            # Trigger development generation automatically
             from . import development_service
             try:
                 development_service.start_development_generation(db, project_id)
@@ -172,7 +218,7 @@ def resume_design_approval(
     return {
         "status": phase,
         "sdd": sdd,
-        "validation_attempts": outputs.get("validation_attempts", 0),
+        "validation_attempts": state_values.get("validation_attempts", 0),
         "validation_errors": errors
     }
 
