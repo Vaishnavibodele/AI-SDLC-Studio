@@ -495,15 +495,14 @@ def download_requirements_pdf(project_id: str, db: Session = Depends(get_db)):
     proj = project_service.get_project(db, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
-    latest_srs = project_service.get_latest_srs_version(db, project_id)
-    if not latest_srs:
-        raise HTTPException(status_code=404, detail="No SRS generated yet")
+    srs_dict, ver_num = project_service.get_effective_srs_data(db, project_id)
+    if not srs_dict:
+        raise HTTPException(status_code=404, detail="No SRS or requirement data generated yet.")
     
-    srs_dict = json.loads(latest_srs.raw_srs)
     pdf_bytes = document_generator.generate_srs_pdf(
         project_name=proj.name,
         srs_data=srs_dict,
-        version=latest_srs.version_num,
+        version=ver_num,
         approval_status=proj.status
     )
     return Response(
@@ -517,15 +516,14 @@ def download_requirements_docx(project_id: str, db: Session = Depends(get_db)):
     proj = project_service.get_project(db, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
-    latest_srs = project_service.get_latest_srs_version(db, project_id)
-    if not latest_srs:
-        raise HTTPException(status_code=404, detail="No SRS generated yet")
+    srs_dict, ver_num = project_service.get_effective_srs_data(db, project_id)
+    if not srs_dict:
+        raise HTTPException(status_code=404, detail="No SRS or requirement data generated yet.")
     
-    srs_dict = json.loads(latest_srs.raw_srs)
     docx_bytes = document_generator.generate_srs_docx(
         project_name=proj.name,
         srs_data=srs_dict,
-        version=latest_srs.version_num,
+        version=ver_num,
         approval_status=proj.status
     )
     return Response(
@@ -539,15 +537,14 @@ def download_requirements_markdown(project_id: str, db: Session = Depends(get_db
     proj = project_service.get_project(db, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
-    latest_srs = project_service.get_latest_srs_version(db, project_id)
-    if not latest_srs:
-        raise HTTPException(status_code=404, detail="No SRS generated yet")
+    srs_dict, ver_num = project_service.get_effective_srs_data(db, project_id)
+    if not srs_dict:
+        raise HTTPException(status_code=404, detail="No SRS or requirement data generated yet.")
     
-    srs_dict = json.loads(latest_srs.raw_srs)
     md_content = document_generator.generate_srs_markdown(
         project_name=proj.name,
         srs_data=srs_dict,
-        version=latest_srs.version_num,
+        version=ver_num,
         approval_status=proj.status
     )
     return Response(
@@ -561,11 +558,11 @@ def download_requirements_json(project_id: str, db: Session = Depends(get_db)):
     proj = project_service.get_project(db, project_id)
     if not proj:
         raise HTTPException(status_code=404, detail="Project not found")
-    latest_srs = project_service.get_latest_srs_version(db, project_id)
-    if not latest_srs:
-        raise HTTPException(status_code=404, detail="No SRS generated yet")
+    srs_dict, ver_num = project_service.get_effective_srs_data(db, project_id)
+    if not srs_dict:
+        raise HTTPException(status_code=404, detail="No SRS or requirement data generated yet.")
     return Response(
-        content=latest_srs.raw_srs,
+        content=json.dumps(srs_dict, indent=2),
         media_type="application/json",
         headers={"Content-Disposition": f"attachment; filename=srs_{project_id}.json"}
     )

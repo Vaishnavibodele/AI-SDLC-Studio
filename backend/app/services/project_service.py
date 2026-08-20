@@ -135,6 +135,89 @@ def get_latest_srs_version(db: Session, project_id: str) -> models.RequirementVe
         return None
     return db.query(models.RequirementVersion).filter(models.RequirementVersion.requirement_id == req.id).order_by(models.RequirementVersion.version_num.desc()).first()
 
+def get_effective_srs_data(db: Session, project_id: str):
+    proj = get_project(db, project_id)
+    if not proj:
+        return None, 1
+        
+    latest_srs = get_latest_srs_version(db, project_id)
+    if latest_srs and latest_srs.raw_srs:
+        try:
+            return json.loads(latest_srs.raw_srs), latest_srs.version_num
+        except Exception:
+            pass
+            
+    from . import agent_service
+    state_details = agent_service.get_agent_state_details(project_id)
+    doc = state_details.get("document")
+    mem = state_details.get("memory")
+    
+    doc_dict = doc.dict() if (doc and hasattr(doc, "dict")) else (doc if isinstance(doc, dict) else {})
+    mem_dict = mem.dict() if (mem and hasattr(mem, "dict")) else (mem if isinstance(mem, dict) else {})
+    
+    if not doc_dict and not mem_dict:
+        return None, 1
+        
+    reqs_list = doc_dict.get("requirements") or []
+    req_titles = []
+    for i, r in enumerate(reqs_list):
+        if isinstance(r, dict):
+            req_titles.append(f"{r.get('requirement_id', f'REQ-{i+1:03d}')}: {r.get('title', '')} - {r.get('statement', '')}")
+        else:
+            req_titles.append(str(r))
+            
+    if not req_titles and mem_dict.get("functional_requirements"):
+        req_titles = [str(r) for r in mem_dict.get("functional_requirements", [])]
+        
+    non_func = []
+    for r in reqs_list:
+        if isinstance(r, dict) and r.get("requirement_type") == "non_functional":
+            non_func.append(f"{r.get('requirement_id', '')}: {r.get('statement', '')}")
+    if not non_func and mem_dict.get("non_functional_requirements"):
+        non_func = [str(r) for r in mem_dict.get("non_functional_requirements", [])]
+
+    summary = doc_dict.get("project_summary") or mem_dict.get("project_summary") or proj.description or "Requirements specification document."
+    problem = doc_dict.get("problem_statement") or proj.description or "Problem statement under analysis."
+    goals = doc_dict.get("business_goals") or (mem_dict.get("business_goals") if mem_dict.get("business_goals") else ["Achieve project requirements."])
+    if isinstance(goals, str):
+        goals = [goals]
+
+    srs_data = {
+        "project_name": proj.name,
+        "document_information": f"Classification: Enterprise Confidentially. Author: AI SDLC Studio. Project: {proj.name}.",
+        "revision_history": "v1.0.0 - Requirement Specification Draft Export.",
+        "approval_history": f"Status: {proj.status}",
+        "executive_summary": summary,
+        "problem_statement": problem,
+        "business_objectives": ", ".join(goals) if isinstance(goals, list) else str(goals),
+        "stakeholders": doc_dict.get("stakeholders") or ["Product Owner", "End Users"],
+        "user_personas": ["Primary User Persona"],
+        "actors": doc_dict.get("actors") or mem_dict.get("target_users") or ["User"],
+        "scope": f"Software requirements definition for {proj.name}.",
+        "out_of_scope": "Manual offline processes.",
+        "business_requirements": req_titles or ["Core functional capabilities."],
+        "functional_requirements": req_titles or ["System shall process user inputs."],
+        "non_functional_requirements": non_func or ["System availability and performance metrics."],
+        "business_rules": ["Standard authorization enforcement."],
+        "user_stories": [f"As a user, I want {r.get('title', 'feature')}" for r in reqs_list if isinstance(r, dict)] if reqs_list else ["As a user, I want to interact with the platform."],
+        "use_cases": ["Core User Workflow"],
+        "acceptance_criteria": ["Given valid input, system processes request successfully."],
+        "ui_requirements": ["Responsive web UI."],
+        "navigation_flow": ["Landing Page -> Main View"],
+        "data_requirements": ["Relational database persistence."],
+        "security_requirements": ["Encrypted TLS communications."],
+        "integration_requirements": [str(d) for d in doc_dict.get("dependencies", [])] or ["REST API integration."],
+        "performance_requirements": ["Response time under 2 seconds."],
+        "compliance_requirements": ["Data protection compliance."],
+        "constraints": doc_dict.get("constraints") or mem_dict.get("constraints") or ["Web architecture."],
+        "assumptions": doc_dict.get("assumptions") or mem_dict.get("assumptions") or ["Standard user environment."],
+        "risks": doc_dict.get("risks") or ["Operational latency."],
+        "dependencies": doc_dict.get("dependencies") or ["Backend APIs."],
+        "requirement_traceability_matrix": [{"id": f"REQ-{i+1:03d}", "title": f"Requirement {i+1}", "description": str(r), "category": "Functional"} for i, r in enumerate(req_titles)]
+    }
+    
+    return srs_data, 1
+
 def submit_human_review(db: Session, project_id: str, phase: str, review_in: schemas.HumanReviewSubmit) -> models.HumanReview:
     review = models.HumanReview(
         project_id=project_id,
