@@ -180,6 +180,54 @@ export const api = {
 
   downloadTestReportPdfUrl(projectId: string): string {
     return `${API_BASE}/projects/${projectId}/development/tests/download/pdf?api_key=${API_KEY}`;
+  },
+
+  async getTestingPayload(projectId: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/payload`);
+    if (!res.ok) throw new Error('Failed to load testing payload');
+    return res.json();
+  },
+
+  async startTesting(projectId: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/start`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to start testing intelligence');
+    return res.json();
+  },
+
+  async executeTesting(projectId: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/execute`, {
+      method: 'POST'
+    });
+    if (!res.ok) throw new Error('Failed to execute testing pipeline');
+    return res.json();
+  },
+
+  async getTestingStatus(projectId: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/status`);
+    if (!res.ok) throw new Error('Failed to fetch testing status');
+    return res.json();
+  },
+
+  async approveTesting(projectId: string, reportId: string, approvedBy: string, comment: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/report/approve`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id: reportId, approved_by: approvedBy, comment })
+    });
+    if (!res.ok) throw new Error('Failed to approve testing report');
+    return res.json();
+  },
+
+  async rejectTesting(projectId: string, reportId: string, approvedBy: string, comment: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/report/reject`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ report_id: reportId, approved_by: approvedBy, comment })
+    });
+    if (!res.ok) throw new Error('Failed to reject testing report');
+    return res.json();
   }
 };
 

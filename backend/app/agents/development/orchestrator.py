@@ -903,7 +903,7 @@ def route_after_artifact_generator(state: DevelopmentAgentState) -> str:
     phase = state.get("phase")
     if phase == "artifact_generator":
         return "artifact_generator"
-    return "test_case_generator"
+    return "human_approval"
 
 
 def route_after_test_generation(state: DevelopmentAgentState) -> str:
@@ -1090,6 +1090,7 @@ def test_case_generator(state: DevelopmentAgentState) -> Dict[str, Any]:
         )
         
         return {
+            "phase": "EXECUTING_TESTS",
             "test_generation_output": test_gen,
             "current_stage": "8",
             "current_node": "test_case_generator",
@@ -1359,6 +1360,7 @@ def test_executor(state: DevelopmentAgentState) -> Dict[str, Any]:
         )
 
         return {
+            "phase": "WAITING_FOR_REVIEW",
             "test_execution_output": test_exec_output,
             "failing_modules": failing_modules,
             "current_stage": "8",
@@ -1489,7 +1491,7 @@ workflow.add_conditional_edges(
     route_after_artifact_generator,
     {
         "artifact_generator": "artifact_generator",
-        "test_case_generator": "test_case_generator"
+        "human_approval": "human_approval"
     }
 )
 

@@ -27,11 +27,13 @@ import {
   Activity,
   ChevronRight,
   Lock,
-  Paperclip
+  Paperclip,
+  Cpu
 } from 'lucide-react';
 import { api, API_BASE, apiFetch, API_KEY, Project, SRSOutput } from './services/api';
 import mermaid from 'mermaid';
 import DevelopmentPanel from './components/DevelopmentPanel';
+import TestingPanel from './components/TestingPanel';
 
 // Initialize mermaid
 mermaid.initialize({
@@ -126,7 +128,7 @@ const MermaidChart: React.FC<{ chart: string; id: string }> = ({ chart, id }) =>
 
 export default function App() {
   // Navigation
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'requirements' | 'design' | 'development'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'requirements' | 'design' | 'development' | 'testing'>('dashboard');
   
   // Projects State
   const [projects, setProjects] = useState<Project[]>([]);
@@ -522,6 +524,13 @@ export default function App() {
     return phase === 'DEVELOPMENT' || phase === 'TESTING' || phase === 'DEPLOYMENT' || (phase === 'DESIGN' && status === 'APPROVED');
   };
 
+  const isTestingTabUnlocked = () => {
+    if (!projectDetails) return false;
+    const phase = projectDetails.project.current_phase;
+    const status = projectDetails.project.status;
+    return phase === 'TESTING' || phase === 'DEPLOYMENT' || status === 'READY_FOR_TESTING' || (phase === 'DEVELOPMENT' && status === 'APPROVED');
+  };
+
   // Direct trigger downloads
   const downloadDocument = (type: 'requirements' | 'design', format: 'pdf' | 'docx' | 'json' | 'markdown') => {
     if (!selectedProjectId) return;
@@ -640,6 +649,33 @@ export default function App() {
               {projectDetails?.project.current_phase === 'DEVELOPMENT' && projectDetails?.project.status === 'APPROVED' ? (
                 <Check className="h-4 w-4 text-emerald-400 bg-emerald-500/20 rounded-full p-0.5" />
               ) : !isDevelopmentTabUnlocked() ? (
+                <span className="text-[9px] bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-bold text-slate-600">LOCKED</span>
+              ) : null}
+            </button>
+
+            {/* Testing Agent Tab */}
+            <button 
+              onClick={() => {
+                if (isTestingTabUnlocked()) {
+                  setActiveTab('testing');
+                }
+              }}
+              disabled={!isTestingTabUnlocked()}
+              className={`w-full flex items-center justify-between px-4 py-3 rounded-lg text-sm font-medium transition-all ${
+                !isTestingTabUnlocked() 
+                  ? 'text-slate-600 hover:text-slate-600 cursor-not-allowed' 
+                  : activeTab === 'testing'
+                  ? 'bg-cyan-600/10 text-cyan-400 border-l-4 border-cyan-500'
+                  : 'text-slate-400 hover:bg-slate-800 hover:text-slate-200'
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                <Cpu className={`h-4 w-4 ${isTestingTabUnlocked() ? 'text-cyan-400' : 'text-slate-700'}`} />
+                Testing Agent
+              </div>
+              {projectDetails?.project.current_phase === 'TESTING' && projectDetails?.project.status === 'APPROVED' ? (
+                <Check className="h-4 w-4 text-emerald-400 bg-emerald-500/20 rounded-full p-0.5" />
+              ) : !isTestingTabUnlocked() ? (
                 <span className="text-[9px] bg-slate-900 px-1.5 py-0.5 rounded border border-slate-800 font-bold text-slate-600">LOCKED</span>
               ) : null}
             </button>
@@ -2754,6 +2790,16 @@ export default function App() {
             {/* 4. DEVELOPMENT WORKSPACE */}
             {activeTab === 'development' && projectDetails && (
               <DevelopmentPanel
+                projectId={selectedProjectId!}
+                projectDetails={projectDetails}
+                fetchProjectDetails={fetchProjectDetails}
+                setToastMessage={setToastMessage}
+              />
+            )}
+
+            {/* 5. TESTING WORKSPACE */}
+            {activeTab === 'testing' && projectDetails && (
+              <TestingPanel
                 projectId={selectedProjectId!}
                 projectDetails={projectDetails}
                 fetchProjectDetails={fetchProjectDetails}

@@ -41,13 +41,22 @@ Return the output as a JSON object containing a list of gaps:
 Do not write markdown block ticks or other chat formatting. Return ONLY the raw valid JSON.
 """
 
-def save_sdd_version_to_db(project_id: str, sdd_data: Dict[str, Any], status: str = "PENDING", comments: str = ""):
+def save_sdd_version_to_db(project_id: str, sdd_data: Any, status: str = "PENDING", comments: str = ""):
     db = SessionLocal()
     try:
         proj = project_service.get_project(db, project_id)
         if not proj:
             return
             
+        if hasattr(sdd_data, "dict"):
+            sdd_dict = sdd_data.dict()
+        elif hasattr(sdd_data, "model_dump"):
+            sdd_dict = sdd_data.model_dump()
+        elif isinstance(sdd_data, dict):
+            sdd_dict = sdd_data
+        else:
+            sdd_dict = {}
+
         latest_req_ver = project_service.get_latest_srs_version(db, project_id)
         # Fallback to general requirement check if version missing
         req_ver_id = latest_req_ver.id if latest_req_ver else "fallback-req-ver-id"
@@ -77,7 +86,7 @@ def save_sdd_version_to_db(project_id: str, sdd_data: Dict[str, Any], status: st
         design_version = project_service.models.DesignVersion(
             design_document_id=design_doc.id,
             version_num=version_num,
-            raw_sdd=json.dumps(sdd_data),
+            raw_sdd=json.dumps(sdd_dict),
             reviewer_comments=comments
         )
         db.add(design_version)

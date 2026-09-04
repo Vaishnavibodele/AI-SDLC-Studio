@@ -208,7 +208,8 @@ def resume_design_approval(
     errors = state_values.get("validation_errors") or outputs.get("validation_errors", [])
     
     # Sync database based on approval or rejection
-    if phase in ("completed", "approved") or status == "APPROVED":
+    is_completed_or_finalized = (phase in ("completed", "approved") or stage == "DESIGN_FINALIZATION") and status == "APPROVED"
+    if is_completed_or_finalized:
         phase = "approved"
         try:
             compiled_design_graph.update_state(config, {"phase": "approved"})

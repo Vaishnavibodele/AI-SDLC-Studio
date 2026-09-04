@@ -1,5 +1,6 @@
 import json
 import os
+import requests
 from fastapi import FastAPI, Depends, HTTPException, Response, Security, Request, UploadFile, File
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.security import APIKeyHeader
@@ -882,6 +883,175 @@ def download_development_artifact(project_id: str, type: str, db: Session = Depe
         media_type=media_type,
         headers={"Content-Disposition": f"attachment; filename={os.path.basename(file_path)}"}
     )
+
+
+@app.get("/api/projects/{project_id}/testing/payload")
+def get_testing_agent_payload(project_id: str, db: Session = Depends(get_db)):
+    proj = project_service.get_project(db, project_id)
+    if not proj:
+        raise HTTPException(status_code=404, detail="Project not found")
+
+    srs_data, srs_ver = project_service.get_effective_srs_data(db, project_id)
+    sdd_data, sdd_ver, _ = design_service.get_effective_sdd_data(db, project_id)
+    latest_dev = development_service.get_latest_development_version(db, project_id)
+
+    raw_features = []
+    if srs_data and srs_data.get("functional_requirements"):
+        for r in srs_data.get("functional_requirements"):
+            if isinstance(r, dict):
+                raw_features.append(f"{r.get('name')}: {r.get('description', '')}")
+            else:
+                raw_features.append(str(r))
+    if not raw_features:
+        raw_features = [f"Full feature suite for {proj.name}"]
+
+    file_paths = []
+    if latest_dev and latest_dev.raw_manifest:
+        try:
+            manifest = json.loads(latest_dev.raw_manifest)
+            raw_files = manifest.get("files", [])
+            file_paths = [f.get("path") if isinstance(f, dict) else str(f) for f in raw_files]
+        except Exception:
+            pass
+    if not file_paths:
+        file_paths = ["app/main.py", "app/database.py", "frontend/index.html"]
+
+    srs_dict = srs_data or {}
+    sdd_dict = sdd_data or {}
+    return {
+        "project_id": project_id,
+        "srs": {
+            "title": srs_dict.get("project_name") or srs_dict.get("title") or proj.name,
+            "version": f"{srs_ver}.0.0",
+            "features": raw_features
+        },
+        "sdd": {
+            "architecture": sdd_dict.get("high_level_architecture") or sdd_dict.get("architecture") or "Clean Architecture",
+            "components": [
+                m.get("name") if isinstance(m, dict) else str(m)
+                for m in (sdd_dict.get("module_breakdown") or sdd_dict.get("components") or ["Core Engine"])
+            ],
+            "interfaces": [
+                f"{ep.get('method', 'GET')} {ep.get('path', '/')}" if isinstance(ep, dict) else str(ep)
+                for ep in (sdd_dict.get("api_endpoints") or sdd_dict.get("interfaces") or ["GET /health"])
+            ]
+        },
+        "source_code": {
+            "repository": f"github.com/enterprise/{proj.name.lower().replace(' ', '-')}",
+            "language": "Python",
+            "files": file_paths,
+            "changes": {
+                "changed_files": file_paths[:3] if len(file_paths) >= 3 else file_paths,
+                "changed_functions": ["main", "service_handler"]
+            }
+        },
+        "api_docs": {
+            "base_url": "http://127.0.0.1:8000",
+            "endpoints": [
+                f"{ep.get('method', 'GET')} {ep.get('path', '/')}" if isinstance(ep, dict) else str(ep)
+                for ep in sdd_dict.get("api_endpoints", [])
+            ]
+        } if sdd_dict.get("api_endpoints") else None,
+        "database_schema": {
+            "dialect": "PostgreSQL",
+            "tables": [
+                t.get("table_name") if isinstance(t, dict) else str(t)
+                for t in sdd_dict.get("database_tables", [])
+            ]
+        } if sdd_dict.get("database_tables") else None,
+        "environment": {
+            "name": "staging-cluster"
+        }
+    }
+
+
+TESTING_AGENT_URL = os.getenv("TESTING_AGENT_URL", "http://127.0.0.1:8085")
+
+
+@app.post("/api/projects/{project_id}/testing/start")
+def start_testing_flow(project_id: str, db: Session = Depends(get_db)):
+    payload = get_testing_agent_payload(project_id, db)
+    try:
+        r = requests.post(f"{TESTING_AGENT_URL}/testing/start", json=payload, timeout=60)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        data = r.json()
+        project_service.log_activity(db, project_id, "TESTING_INTELLIGENCE_STARTED", f"Testing intelligence P1-P3 triggered. Validation: {data.get('validation_status')}")
+        return data
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+
+
+@app.post("/api/projects/{project_id}/testing/execute")
+def execute_testing_pipeline(project_id: str, db: Session = Depends(get_db)):
+    payload = get_testing_agent_payload(project_id, db)
+    try:
+        r = requests.post(f"{TESTING_AGENT_URL}/testing/execute", json=payload, timeout=300)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        data = r.json()
+        qg_status = data.get("quality_gate", {}).get("overall_status", "UNKNOWN")
+        readiness = data.get("quality_gate", {}).get("release_readiness", "UNKNOWN")
+        project_service.log_activity(
+            db, project_id, "TESTING_EXECUTION_COMPLETED",
+            f"Testing Agent P1-P8 executed. Quality Gate: {qg_status}, Readiness: {readiness}"
+        )
+        return data
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+
+
+@app.get("/api/projects/{project_id}/testing/status")
+def get_testing_agent_status(project_id: str):
+    try:
+        r = requests.get(f"{TESTING_AGENT_URL}/testing/status/{project_id}", timeout=15)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        return r.json()
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+
+
+@app.post("/api/projects/{project_id}/testing/report/approve")
+def approve_testing_report(project_id: str, body: dict, db: Session = Depends(get_db)):
+    try:
+        payload = dict(body)
+        payload["project_id"] = project_id
+        r = requests.post(f"{TESTING_AGENT_URL}/testing/report/approve", json=payload, timeout=30)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        res = r.json()
+        
+        # Update SDLC project state to DEPLOYMENT / READY_FOR_DEPLOYMENT
+        project_service.update_project_status(db, project_id, "DEPLOYMENT", "READY_FOR_DEPLOYMENT")
+        project_service.log_activity(
+            db, project_id, "TESTING_APPROVED",
+            f"Testing phase approved by {body.get('approved_by', 'QA Lead')}. Project moved to DEPLOYMENT."
+        )
+        return res
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+
+
+@app.post("/api/projects/{project_id}/testing/report/reject")
+def reject_testing_report(project_id: str, body: dict, db: Session = Depends(get_db)):
+    try:
+        payload = dict(body)
+        payload["project_id"] = project_id
+        r = requests.post(f"{TESTING_AGENT_URL}/testing/report/reject", json=payload, timeout=30)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        res = r.json()
+        
+        # Update SDLC project state to DEVELOPMENT / DEVELOPMENT_PLANNING
+        project_service.update_project_status(db, project_id, "DEVELOPMENT", "DEVELOPMENT_PLANNING")
+        project_service.log_activity(
+            db, project_id, "TESTING_REJECTED",
+            f"Testing phase rejected by {body.get('approved_by', 'QA Lead')}. Reason: {body.get('comment', 'None')}"
+        )
+        return res
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
 
 
 @app.get("/health")
