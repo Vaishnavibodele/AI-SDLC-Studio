@@ -196,11 +196,29 @@ export const api = {
     return res.json();
   },
 
-  async executeTesting(projectId: string) {
-    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/execute`, {
+  async executeTesting(projectId: string, testCaseIds?: string[]) {
+    const options: RequestInit = {
       method: 'POST'
-    });
+    };
+    if (testCaseIds && testCaseIds.length > 0) {
+      options.headers = { 'Content-Type': 'application/json' };
+      options.body = JSON.stringify({ test_case_ids: testCaseIds });
+    }
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/execute`, options);
     if (!res.ok) throw new Error('Failed to execute testing pipeline');
+    return res.json();
+  },
+
+  async retryFailedTests(projectId: string, testCaseIds?: string[]) {
+    const options: RequestInit = {
+      method: 'POST'
+    };
+    if (testCaseIds && testCaseIds.length > 0) {
+      options.headers = { 'Content-Type': 'application/json' };
+      options.body = JSON.stringify({ test_case_ids: testCaseIds });
+    }
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/retry`, options);
+    if (!res.ok) throw new Error('Failed to retry test cases');
     return res.json();
   },
 
@@ -228,6 +246,23 @@ export const api = {
     });
     if (!res.ok) throw new Error('Failed to reject testing report');
     return res.json();
+  },
+
+  async downloadReport(projectId: string, format: string) {
+    const res = await apiFetch(`${API_BASE}/projects/${projectId}/testing/export/${format}`);
+    if (!res.ok) {
+      const errText = await res.text();
+      throw new Error(`Failed to download report as ${format.toUpperCase()}: ${errText}`);
+    }
+    const blob = await res.blob();
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `test-report-${projectId}.${format}`;
+    document.body.appendChild(a);
+    a.click();
+    a.remove();
+    window.URL.revokeObjectURL(url);
   }
 };
 

@@ -983,8 +983,13 @@ def start_testing_flow(project_id: str, db: Session = Depends(get_db)):
 
 
 @app.post("/api/projects/{project_id}/testing/execute")
-def execute_testing_pipeline(project_id: str, db: Session = Depends(get_db)):
+def execute_testing_pipeline(project_id: str, body: Optional[dict] = None, db: Session = Depends(get_db)):
     payload = get_testing_agent_payload(project_id, db)
+    if body:
+        if "test_case_ids" in body:
+            payload["test_case_ids"] = body["test_case_ids"]
+        if "retry" in body:
+            payload["retry"] = body["retry"]
     try:
         r = requests.post(f"{TESTING_AGENT_URL}/testing/execute", json=payload, timeout=300)
         if r.status_code != 200:
@@ -995,6 +1000,26 @@ def execute_testing_pipeline(project_id: str, db: Session = Depends(get_db)):
         project_service.log_activity(
             db, project_id, "TESTING_EXECUTION_COMPLETED",
             f"Testing Agent P1-P8 executed. Quality Gate: {qg_status}, Readiness: {readiness}"
+        )
+        return data
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+
+
+@app.post("/api/projects/{project_id}/testing/retry")
+def retry_testing_pipeline(project_id: str, body: Optional[dict] = None, db: Session = Depends(get_db)):
+    payload = get_testing_agent_payload(project_id, db)
+    payload["retry"] = True
+    if body and "test_case_ids" in body:
+        payload["test_case_ids"] = body["test_case_ids"]
+    try:
+        r = requests.post(f"{TESTING_AGENT_URL}/testing/retry", json=payload, timeout=300)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        data = r.json()
+        project_service.log_activity(
+            db, project_id, "TESTING_RETRY_COMPLETED",
+            f"Retried failed test cases. Executed {len(data.get('results', []))} tests."
         )
         return data
     except requests.exceptions.RequestException as e:
@@ -1054,6 +1079,38 @@ def reject_testing_report(project_id: str, body: dict, db: Session = Depends(get
         raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
 
 
+@app.get("/api/projects/{project_id}/testing/export/{fmt}")
+@app.get("/api/projects/{project_id}/testing/download/{fmt}")
+def export_testing_report(project_id: str, fmt: str, db: Session = Depends(get_db)):
+    """Export the Testing Agent comprehensive report for a project in the requested format (pdf, docx, json, html, csv)."""
+    fmt_lower = fmt.lower()
+    if fmt_lower not in ["pdf", "docx", "json", "html", "csv"]:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}. Must be pdf, docx, json, html, or csv.")
+
+    # 1. Try to fetch stored report from Testing Agent
+    try:
+        r = requests.get(f"{TESTING_AGENT_URL}/testing/report/export/{project_id}?fmt={fmt_lower}", timeout=60)
+        if r.status_code == 200:
+            media_type = r.headers.get("content-type", "application/octet-stream")
+            content_disposition = r.headers.get("content-disposition", f'attachment; filename="test-report-{project_id}.{fmt_lower}"')
+            return Response(content=r.content, media_type=media_type, headers={"Content-Disposition": content_disposition})
+    except requests.exceptions.RequestException:
+        pass
+
+    # 2. If not stored or first run, export using real upstream SDLC project payload
+    try:
+        payload = get_testing_agent_payload(project_id, db)
+        r = requests.post(f"{TESTING_AGENT_URL}/testing/report/export?fmt={fmt_lower}", json=payload, timeout=90)
+        if r.status_code != 200:
+            raise HTTPException(status_code=r.status_code, detail=r.text)
+        media_type = r.headers.get("content-type", "application/octet-stream")
+        content_disposition = r.headers.get("content-disposition", f'attachment; filename="test-report-{project_id}.{fmt_lower}"')
+        return Response(content=r.content, media_type=media_type, headers={"Content-Disposition": content_disposition})
+    except requests.exceptions.RequestException as e:
+        raise HTTPException(status_code=502, detail=f"Testing Agent export service error: {str(e)}")
+
+
 @app.get("/health")
 def health_check():
     return {"status": "ok"}
+
