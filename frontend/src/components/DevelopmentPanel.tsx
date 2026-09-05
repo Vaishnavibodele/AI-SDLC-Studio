@@ -38,21 +38,16 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
 }) => {
   const [selectedFile, setSelectedFile] = useState<string | null>(null);
   const [selectedReport, setSelectedReport] = useState<string | null>(null);
-  const [activeMainTab, setActiveMainTab] = useState<'code' | 'testing'>('code');
-  const [testFilter, setTestFilter] = useState<'ALL' | 'UNIT' | 'INTEGRATION' | 'API' | 'FUNCTIONAL' | 'SECURITY' | 'REGRESSION' | 'FAILED'>('ALL');
-  const [expandedTestCase, setExpandedTestCase] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const [generating, setGenerating] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
 
-  
   // Gated reviews controls
   const [reviewerName, setReviewerName] = useState('Lead Developer');
   const [reviewComments, setReviewComments] = useState('');
   const [rejectedModules, setRejectedModules] = useState<string[]>([]);
   
   const [devData, setDevData] = useState<any>(null);
-  const [testReport, setTestReport] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
   const [agents, setAgents] = useState<any[]>([]);
   const [artifacts, setArtifacts] = useState<any[]>([]);
@@ -92,14 +87,6 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
       if (artifactsRes.ok) {
         const artData = await artifactsRes.json();
         setArtifacts(artData.artifacts || []);
-      }
-
-      // 5. Fetch testing report
-      try {
-        const testReportData = await api.getTestReport(projectId);
-        setTestReport(testReportData);
-      } catch (e) {
-        console.error("Error fetching test report:", e);
       }
     } catch (err) {
       console.error("Error loading development data:", err);
@@ -157,7 +144,7 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
       if (res.ok) {
         setToastMessage(
           status === 'APPROVED' 
-            ? "Development phase approved. Transitioned project to TESTING phase." 
+            ? "Development phase approved. Project is READY FOR TESTING." 
             : `Review submitted. Re-invoking affected agent(s): ${rejectedModules.join(', ')}`
         );
         setReviewComments('');
@@ -188,10 +175,6 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
     window.open(`${API_BASE}/projects/${projectId}/development/artifacts/download?type=${type}&api_key=${API_KEY}`, '_blank');
   };
 
-  const downloadTestReportPdf = () => {
-    window.open(api.downloadTestReportPdfUrl(projectId), '_blank');
-  };
-
   if (!devData) {
     return (
       <div className="flex-grow flex items-center justify-center bg-[#0b0f19]">
@@ -200,13 +183,11 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
     );
   }
 
-  const { state, history } = devData;
+  const { state } = devData;
   const manifest = state?.manifest || [];
   const files = state?.generated_files || {};
   const phase = state?.phase || 'DESIGN_APPROVED';
-  const validationAttempts = state?.validation_attempts || 0;
   const validationErrors = state?.validation_errors || [];
-  const reviews = state?.reviews || [];
   const logs = state?.logs || [];
   const executionLogs = state?.execution_logs || [];
   const reports = state?.reports || {};
@@ -217,24 +198,6 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
   const currentVersion = state?.current_version || 1;
   const qualityScore = state?.quality_score || 0.0;
   const securityScore = state?.security_score || 0.0;
-
-  const unitStats = testReport?.unit || { total: 0, passed: 0, failed: 0, skipped: 0, cases: [] };
-  const integStats = testReport?.integration || { total: 0, passed: 0, failed: 0, skipped: 0, cases: [] };
-  const apiStats = testReport?.api || { total: 0, passed: 0, failed: 0, skipped: 0, cases: [] };
-  const funcStats = testReport?.functional || { total: 0, passed: 0, failed: 0, skipped: 0, cases: [] };
-  const regrStats = testReport?.regression || { total: 0, passed: 0, failed: 0, skipped: 0, cases: [] };
-  
-  const overallTestStatus = testReport?.overall_status || 'PENDING';
-  const totalFailingTests = (unitStats.failed || 0) + (integStats.failed || 0) + (apiStats.failed || 0) + (funcStats.failed || 0) + (regrStats.failed || 0);
-
-  const allTestCasesList = [
-    ...unitStats.cases,
-    ...integStats.cases,
-    ...apiStats.cases,
-    ...funcStats.cases,
-    ...regrStats.cases
-  ];
-
 
   // Map agent status dynamically from tasks list or orchestrator state status maps
   const getAgentStatus = (agentName: string): string => {
@@ -312,10 +275,9 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
                       onClick={() => {
                         setSelectedFile(file.path);
                         setSelectedReport(null);
-                        setActiveMainTab('code');
                       }}
                       className={`w-full text-left p-3 rounded-xl border transition-all flex flex-col gap-1.5 ${
-                        isSelected && activeMainTab === 'code'
+                        isSelected
                           ? 'bg-indigo-650/15 border-indigo-500 text-indigo-200 shadow-md' 
                           : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700 text-slate-400 hover:text-slate-200'
                       }`}
@@ -355,10 +317,9 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
                       onClick={() => {
                         setSelectedReport(key);
                         setSelectedFile(null);
-                        setActiveMainTab('code');
                       }}
                       className={`w-full text-left px-3.5 py-2.5 rounded-lg border transition-all flex items-center justify-between ${
-                        isSelected && activeMainTab === 'code'
+                        isSelected
                           ? 'bg-emerald-650/15 border-emerald-500 text-emerald-300'
                           : 'bg-slate-900/50 border-slate-800/80 hover:border-slate-700 text-slate-400'
                       }`}
@@ -400,30 +361,9 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
         
         <div className="h-14 border-b border-slate-800 flex items-center justify-between px-8 bg-[#111827] shrink-0">
           <div className="flex items-center gap-3">
-            <button
-              onClick={() => setActiveMainTab('code')}
-              className={`text-xs font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-lg border transition-all ${
-                activeMainTab === 'code' ? 'bg-indigo-650/20 border-indigo-500 text-indigo-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              Code Workspace
-            </button>
-            <button
-              onClick={() => setActiveMainTab('testing')}
-              className={`text-xs font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-lg border transition-all flex items-center gap-2 ${
-                activeMainTab === 'testing' ? 'bg-indigo-650/20 border-indigo-500 text-indigo-300' : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-slate-200'
-              }`}
-            >
-              <ShieldCheck className="h-3.5 w-3.5 text-indigo-400" />
-              Testing Suite
-              {testReport && (unitStats.total > 0 || integStats.total > 0) && (
-                <span className={`text-[9px] px-1.5 py-0.5 rounded font-black uppercase ${
-                  overallTestStatus === 'PASSED' ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                }`}>
-                  {overallTestStatus}
-                </span>
-              )}
-            </button>
+            <span className="text-xs font-extrabold uppercase tracking-wider py-1.5 px-3 rounded-lg border bg-indigo-650/20 border-indigo-500 text-indigo-300">
+              Code Workspace & Artifacts
+            </span>
           </div>
 
           <div className="flex items-center gap-3">
@@ -445,20 +385,50 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
               <p className="text-xs text-rose-300 leading-normal font-medium">{state.error_message}</p>
             </div>
           )}
+
+          {/* Handoff Banner when Development is Approved & Ready for Testing */}
+          {phase === 'READY_FOR_TESTING' && (
+            <div className="bg-gradient-to-r from-indigo-950/60 via-cyan-950/30 to-slate-900 border border-cyan-500/30 p-5 rounded-2xl space-y-3 shadow-xl">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 rounded-xl bg-cyan-500/15 border border-cyan-500/30 text-cyan-400 flex items-center justify-center font-bold">
+                    <ShieldCheck className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h4 className="text-sm font-black text-slate-100 uppercase tracking-wide">
+                      Development Stage Complete & Approved &mdash; Ready for Testing
+                    </h4>
+                    <p className="text-xs text-slate-400 mt-0.5">
+                      Source code manifests, architectural interfaces, and build artifacts are certified. Proceed to the 8-Phase Testing Agent.
+                    </p>
+                  </div>
+                </div>
+                <span className="px-3 py-1 rounded-full text-xs font-black bg-emerald-500/15 text-emerald-400 border border-emerald-500/30">
+                  READY FOR TESTING
+                </span>
+              </div>
+              <div className="flex items-center justify-between pt-2 border-t border-slate-800/80 text-xs">
+                <span className="text-slate-400">
+                  All test design, multi-runner execution, risk telemetry, and release governance are handled by the <strong className="text-cyan-300">8-Phase Testing Agent</strong>.
+                </span>
+              </div>
+            </div>
+          )}
           
-          {/* Parallel Worker Status Cards */}
+          {/* Parallel Worker Status Cards (6 Core Development Agents) */}
           {manifest.length > 0 && (
             <div className="space-y-2">
-              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">Stage 4-8: Multi-Agent Parallel Scaffolding & Testing</span>
-              <div className="grid grid-cols-7 gap-2.5">
+              <span className="text-[10px] font-extrabold uppercase tracking-widest text-slate-500">
+                Multi-Agent Parallel Development Workers
+              </span>
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-2.5">
                 {[
                   { name: "DatabaseDeveloperAgent", label: "Database Agent", icon: <Database className="h-3.5 w-3.5" /> },
                   { name: "BackendDeveloperAgent", label: "Backend Agent", icon: <Code className="h-3.5 w-3.5" /> },
                   { name: "FrontendDeveloperAgent", label: "Frontend Agent", icon: <Layers className="h-3.5 w-3.5" /> },
                   { name: "APIIntegrationAgent", label: "API Integration", icon: <Activity className="h-3.5 w-3.5" /> },
                   { name: "DocumentationAgent", label: "Documentation", icon: <FileJson className="h-3.5 w-3.5" /> },
-                  { name: "SelfReviewAgent", label: "Self Review", icon: <ShieldCheck className="h-3.5 w-3.5" /> },
-                  { name: "TestingAgent", label: "Testing Agent", icon: <ShieldCheck className="h-3.5 w-3.5" /> }
+                  { name: "SelfReviewAgent", label: "Self Review", icon: <ShieldCheck className="h-3.5 w-3.5" /> }
                 ].map((ag) => {
                   const status = getAgentStatus(ag.name);
                   const details = getAgentDetails(ag.name);
@@ -487,319 +457,88 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
             </div>
           )}
 
-          {/* TAB 1: CODE WORKSPACE */}
-          {activeMainTab === 'code' && (
-            <>
-              {/* Stepper Progress bar */}
-              {manifest.length > 0 && (
-                <div className="bg-slate-900 border border-slate-850 p-4 rounded-2xl space-y-2">
-                  <div className="flex items-center justify-between text-xs font-bold">
-                    <span className="text-slate-400">Pipeline execution state</span>
-                    <span className="text-indigo-400">{progressPercentage}%</span>
-                  </div>
-                  <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800">
-                    <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
-                  </div>
-                  <span className="text-[10px] text-slate-500 block font-mono">Stage: {state.current_agent || 'Orchestrator'} | {state.current_task || 'Idle'}</span>
-                </div>
-              )}
-
-              {/* Advisory self review metrics card */}
-              {Object.keys(selfReviewReport).length > 0 && (
-                <div className="bg-[#121625]/60 border border-slate-800 p-5 rounded-2xl space-y-4">
-                  <div className="flex items-center justify-between border-b border-slate-800 pb-3">
-                    <h4 className="text-xs font-extrabold uppercase tracking-widest text-indigo-400 flex items-center gap-2">
-                      <Sparkles className="h-4 w-4" />
-                      Stage 6: AI Self-Review report (Advisory)
-                    </h4>
-                    <div className="flex gap-4 text-xs font-bold text-slate-400">
-                      <div>Quality Score: <span className="text-emerald-400">{qualityScore.toFixed(1)}/10</span></div>
-                      <div>Security Score: <span className="text-emerald-400">{securityScore.toFixed(1)}/10</span></div>
-                    </div>
-                  </div>
-                  
-                  <div className="grid grid-cols-2 gap-4 text-xs">
-                    <div className="space-y-1">
-                      <span className="font-extrabold text-slate-500 uppercase text-[9px] tracking-wider block">Requirements Alignment</span>
-                      <p className="text-slate-400 leading-normal">{selfReviewReport.alignment_srs}</p>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="font-extrabold text-slate-500 uppercase text-[9px] tracking-wider block">Architecture Compliance</span>
-                      <p className="text-slate-400 leading-normal">{selfReviewReport.compliance_architecture}</p>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {/* Validation compilation errors */}
-              {validationErrors.length > 0 && (
-                <div className="bg-rose-500/10 border border-rose-500/20 p-5 rounded-2xl space-y-3">
-                  <h4 className="text-xs font-extrabold uppercase tracking-widest text-rose-450 flex items-center gap-2">
-                    <AlertCircle className="h-4.5 w-4.5" />
-                    Validation errors (Attempt {validationAttempts}/3)
-                  </h4>
-                  <div className="space-y-2">
-                    {validationErrors.map((err: any, idx: number) => (
-                      <div key={idx} className="bg-slate-950 border border-rose-500/15 p-3 rounded-xl font-mono text-[11px] text-rose-350">
-                        <span className="font-black text-rose-400 uppercase mr-2">[{err.agent || 'Validator'}]:</span>
-                        {err.error || err.details || JSON.stringify(err)}
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-
-              {/* Source/Report File Pre Container */}
-              {selectedFile && files[selectedFile] ? (
-                <pre className="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-xs font-mono text-indigo-300 overflow-auto h-[55vh] leading-relaxed select-text shadow-inner">
-                  <code>{files[selectedFile]}</code>
-                </pre>
-              ) : selectedReport && reports[selectedReport] ? (
-                <pre className="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-auto h-[55vh] leading-relaxed select-text shadow-inner">
-                  <code>{reports[selectedReport]}</code>
-                </pre>
-              ) : (
-                <div className="h-[45vh] flex flex-col items-center justify-center text-slate-500 space-y-4">
-                  <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-indigo-500">
-                    <Code className="h-8 w-8" />
-                  </div>
-                  <div className="text-center max-w-sm space-y-2">
-                    <h4 className="font-bold text-slate-300">Code Workspace Empty</h4>
-                    <p className="text-xs text-slate-400">
-                      {phase === 'DESIGN_APPROVED' || phase === 'planning'
-                        ? "Initialize the multi-agent orchestrator to generate files scaffolds."
-                        : "No source contents available for preview."}
-                    </p>
-                    
-                    {(phase === 'DESIGN_APPROVED' || phase === 'planning') && (
-                      <button
-                        onClick={handleGenerateCode}
-                        disabled={generating}
-                        className="mt-4 flex items-center gap-2 py-2 px-5 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition-all disabled:opacity-50 mx-auto"
-                      >
-                        {generating && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
-                        Initialize Multi-Agent Scaffold
-                      </button>
-                    )}
-                  </div>
-                </div>
-              )}
-            </>
+          {/* Stepper Progress bar */}
+          {manifest.length > 0 && (
+            <div className="bg-slate-900 border border-slate-850 p-4 rounded-2xl space-y-2">
+              <div className="flex items-center justify-between text-xs font-bold">
+                <span className="text-slate-400">Pipeline execution state</span>
+                <span className="text-indigo-400">{progressPercentage}%</span>
+              </div>
+              <div className="w-full bg-slate-950 h-1.5 rounded-full overflow-hidden border border-slate-800">
+                <div className="bg-indigo-500 h-full rounded-full transition-all duration-500" style={{ width: `${progressPercentage}%` }}></div>
+              </div>
+              <span className="text-[10px] text-slate-500 block font-mono">Stage: {state.current_agent || 'Orchestrator'} | {state.current_task || 'Idle'}</span>
+            </div>
           )}
 
-          {/* TAB 2: TESTING SUITE DASHBOARD */}
-          {activeMainTab === 'testing' && (
-            <div className="space-y-6">
-              {/* Header and Download Button */}
-              <div className="flex items-center justify-between border-b border-slate-800 pb-4">
-                <div>
-                  <h3 className="text-sm font-extrabold text-slate-200 uppercase tracking-wider flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-indigo-400" />
-                    Automated Test Suite Dashboard
-                  </h3>
-                  <p className="text-xs text-slate-400 mt-1">
-                    Generated unit and integration tests executed in sandboxed runtime before human approval.
-                  </p>
+          {/* Advisory self review metrics card */}
+          {Object.keys(selfReviewReport).length > 0 && (
+            <div className="bg-[#121625]/60 border border-slate-800 p-5 rounded-2xl space-y-4">
+              <div className="flex items-center justify-between border-b border-slate-800 pb-3">
+                <h4 className="text-xs font-extrabold uppercase tracking-widest text-indigo-400 flex items-center gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Stage 6: AI Self-Review report (Advisory)
+                </h4>
+                <div className="flex gap-4 text-xs font-bold text-slate-400">
+                  <div>Quality Score: <span className="text-emerald-400">{qualityScore.toFixed(1)}/10</span></div>
+                  <div>Security Score: <span className="text-emerald-400">{securityScore.toFixed(1)}/10</span></div>
                 </div>
-                <button
-                  onClick={downloadTestReportPdf}
-                  className="flex items-center gap-2 py-2 px-4 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold text-xs rounded-lg uppercase tracking-wider transition-all shadow"
-                >
-                  <FileDown className="h-4 w-4" />
-                  Download Test Report (PDF)
-                </button>
               </div>
-
-              {/* Failing Tests Warning Banner */}
-              {totalFailingTests > 0 && (
-                <div className="bg-amber-500/10 border border-amber-500/30 p-4 rounded-xl flex items-center justify-between text-amber-400 text-xs font-bold">
-                  <div className="flex items-center gap-2">
-                    <AlertCircle className="h-4.5 w-4.5 text-amber-400 shrink-0" />
-                    <span>{totalFailingTests} test(s) failing — review details below before submitting approval.</span>
-                  </div>
-                  <span className="text-[10px] uppercase font-black bg-amber-500/20 px-2 py-1 rounded border border-amber-500/30">
-                    Review Required
-                  </span>
-                </div>
-              )}
-
-              {/* 5 Summary Cards Grid */}
-              <div className="grid grid-cols-5 gap-3">
-                {[
-                  { title: "Unit Testing", stats: unitStats, color: "text-emerald-400" },
-                  { title: "Integration Testing", stats: integStats, color: "text-indigo-400" },
-                  { title: "API Testing", stats: apiStats, color: "text-cyan-400" },
-                  { title: "Functional Testing", stats: funcStats, color: "text-purple-400" },
-                  { title: "Regression Testing", stats: regrStats, color: "text-amber-400" }
-                ].map((card, i) => (
-                  <div key={i} className="bg-slate-900 border border-slate-800 p-3.5 rounded-xl space-y-2">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-extrabold text-slate-400 uppercase tracking-wider truncate">{card.title}</span>
-                      <span className={`text-[10px] font-mono font-bold ${card.color}`}>
-                        {card.stats.total > 0 ? `${((card.stats.passed / card.stats.total) * 100).toFixed(0)}%` : 'N/A'}
-                      </span>
-                    </div>
-                    <div className="text-xl font-black text-slate-200">
-                      {card.stats.passed} <span className="text-[10px] font-normal text-slate-500">/ {card.stats.total} passed</span>
-                    </div>
-                    <div className="flex gap-2 text-[9px] font-semibold text-slate-400">
-                      <span className="text-emerald-400">P: {card.stats.passed}</span>
-                      <span className={card.stats.failed > 0 ? "text-rose-400 font-bold" : ""}>F: {card.stats.failed}</span>
-                      <span>S: {card.stats.skipped}</span>
-                    </div>
-                  </div>
-                ))}
-              </div>
-
-              {/* Detailed Collapsible Test Cases List */}
-              <div className="bg-slate-900 border border-slate-800 rounded-2xl p-5 space-y-4">
-                <div className="flex items-center justify-between">
-                  <h4 className="text-xs font-extrabold text-slate-300 uppercase tracking-wider flex items-center gap-2">
-                    <ShieldCheck className="h-4 w-4 text-indigo-400" />
-                    Test Case Executions ({allTestCasesList.length} Total Cases)
-                  </h4>
-
-                  {/* 5-Type Filter Buttons */}
-                  <div className="flex items-center gap-1 bg-slate-950 p-1 rounded-lg border border-slate-800">
-                    {[
-                      { id: 'ALL', label: 'All' },
-                      { id: 'UNIT', label: 'Unit' },
-                      { id: 'INTEGRATION', label: 'Integration' },
-                      { id: 'API', label: 'API' },
-                      { id: 'FUNCTIONAL', label: 'Functional' },
-                      { id: 'REGRESSION', label: 'Regression' },
-                      { id: 'FAILED', label: 'Failed' }
-                    ].map((f) => (
-                      <button
-                        key={f.id}
-                        onClick={() => setTestFilter(f.id as any)}
-                        className={`text-[9px] font-extrabold uppercase px-2 py-1 rounded transition-all ${
-                          testFilter === f.id ? 'bg-indigo-650 text-white' : 'text-slate-400 hover:text-slate-200'
-                        }`}
-                      >
-                        {f.label}
-                      </button>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Strengths</span>
+                  <ul className="text-xs text-slate-300 list-disc list-inside space-y-0.5">
+                    {selfReviewReport.strengths?.map((s: string, i: number) => (
+                      <li key={i}>{s}</li>
                     ))}
-                  </div>
+                  </ul>
                 </div>
+                <div className="space-y-1">
+                  <span className="text-[10px] font-bold text-slate-500 uppercase block">Recommended Improvements</span>
+                  <ul className="text-xs text-slate-300 list-disc list-inside space-y-0.5">
+                    {selfReviewReport.improvements?.map((s: string, i: number) => (
+                      <li key={i}>{s}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
-                {allTestCasesList.length === 0 ? (
-                  <div className="py-8 text-center text-xs text-slate-500 italic">
-                    No test results recorded yet. Run multi-agent generation pipeline to generate and execute 5-type tests.
-                  </div>
-                ) : (
-                  <div className="space-y-3 max-h-[55vh] overflow-y-auto pr-1">
-                    {allTestCasesList
-                      .filter((tc: any) => {
-                        const typeUpper = (tc.test_type || tc.type || '').toUpperCase();
-                        if (testFilter === 'UNIT') return typeUpper === 'UNIT';
-                        if (testFilter === 'INTEGRATION') return typeUpper === 'INTEGRATION';
-                        if (testFilter === 'API') return typeUpper === 'API';
-                        if (testFilter === 'FUNCTIONAL') return typeUpper === 'FUNCTIONAL';
-                        if (testFilter === 'REGRESSION') return typeUpper === 'REGRESSION';
-                        if (testFilter === 'FAILED') return tc.status === 'FAILED' || tc.status === 'FAIL';
-                        return true;
-                      })
-                      .map((tc: any, idx: number) => {
-                        const isPassed = tc.status === 'PASS' || tc.status === 'PASSED';
-                        const isFailed = tc.status === 'FAIL' || tc.status === 'FAILED';
-                        const isExpanded = expandedTestCase === idx;
-                        const tcId = tc.test_case_id || `TC-${idx + 1 < 10 ? '00' : idx + 1 < 100 ? '0' : ''}${idx + 1}`;
-                        return (
-                          <div key={idx} className="bg-slate-950 border border-slate-800/90 rounded-xl p-4 space-y-3">
-                            <div className="flex items-center justify-between">
-                              <div className="flex items-center gap-2.5">
-                                {isPassed ? (
-                                  <CheckCircle2 className="h-4.5 w-4.5 text-emerald-400 shrink-0" />
-                                ) : isFailed ? (
-                                  <AlertCircle className="h-4.5 w-4.5 text-rose-400 shrink-0" />
-                                ) : (
-                                  <Clock className="h-4.5 w-4.5 text-slate-500 shrink-0" />
-                                )}
-                                <span className="font-mono text-xs font-black text-indigo-400 bg-indigo-500/10 px-2 py-0.5 rounded border border-indigo-500/20">{tcId}</span>
-                                <span className="font-mono text-xs font-bold text-slate-200">{tc.name}</span>
-                                <span className="text-[9px] uppercase font-bold text-slate-400 bg-slate-900 px-2 py-0.5 rounded border border-slate-800">
-                                  {tc.module}
-                                </span>
-                                <span className="text-[8px] uppercase font-black text-indigo-300 bg-indigo-950 px-2 py-0.5 rounded border border-indigo-800/60">
-                                  {tc.test_type || tc.type}
-                                </span>
-                              </div>
-                              <div className="flex items-center gap-3 text-[10px] font-semibold text-slate-400">
-                                <span>{tc.duration ? `${tc.duration.toFixed(2)}s` : '0.01s'}</span>
-                                <span className={`px-2.5 py-0.5 rounded uppercase font-black ${
-                                  isPassed ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20' : 'bg-rose-500/10 text-rose-400 border border-rose-500/20'
-                                }`}>{isPassed ? 'PASS' : 'FAIL'}</span>
-                                <button
-                                  onClick={() => setExpandedTestCase(isExpanded ? null : idx)}
-                                  className="text-[10px] font-bold text-indigo-400 hover:text-indigo-300 underline ml-1"
-                                >
-                                  {isExpanded ? 'Hide Details' : 'View Details'}
-                                </button>
-                              </div>
-                            </div>
-
-                            {/* TC Details Metadata Section */}
-                            <div className="grid grid-cols-2 gap-3 bg-slate-900/60 border border-slate-850 p-3 rounded-lg text-[11px] leading-relaxed">
-                              <div>
-                                <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Test Scenario:</span>
-                                <p className="text-slate-300 font-medium">{tc.test_scenario || 'Verify component execution'}</p>
-                              </div>
-                              <div>
-                                <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Expected Result:</span>
-                                <p className="text-slate-300 font-medium">{tc.expected_result || 'Execution succeeds without exception'}</p>
-                              </div>
-                              <div>
-                                <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Preconditions:</span>
-                                <p className="text-slate-400">{tc.preconditions || 'System environment ready'}</p>
-                              </div>
-                              <div>
-                                <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Actual Result:</span>
-                                <p className={isFailed ? "text-rose-400 font-bold" : "text-emerald-400 font-semibold"}>
-                                  {tc.actual_result || (isPassed ? "Execution passed without errors." : "Failed")}
-                                </p>
-                              </div>
-                            </div>
-
-                            {isFailed && (tc.error_details || tc.error_message) && (
-                              <div className="space-y-1">
-                                <span className="text-[9px] font-extrabold uppercase text-rose-400 tracking-wider">Defect Details:</span>
-                                <pre className="bg-slate-900 border border-rose-500/20 p-3 rounded-lg text-[11px] font-mono text-rose-350 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                                  {tc.error_details || tc.error_message}
-                                </pre>
-                              </div>
-                            )}
-
-                            {isExpanded && (
-                              <div className="space-y-2 border-t border-slate-850 pt-2">
-                                <div className="grid grid-cols-2 gap-3 text-[11px]">
-                                  <div>
-                                    <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Test Steps:</span>
-                                    <p className="text-slate-300 font-mono whitespace-pre-wrap">{tc.test_steps || '1. Call method\n2. Assert response'}</p>
-                                  </div>
-                                  <div>
-                                    <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-0.5">Test Input:</span>
-                                    <p className="text-slate-300 font-mono">{tc.test_input || 'Default mock payload'}</p>
-                                  </div>
-                                </div>
-                                {tc.source_snippet && (
-                                  <div>
-                                    <span className="text-[9px] font-extrabold uppercase text-slate-500 block mb-1">Generated Source Code:</span>
-                                    <pre className="bg-slate-900 border border-slate-800 p-3 rounded-lg text-[11px] font-mono text-indigo-300 overflow-x-auto whitespace-pre-wrap leading-relaxed">
-                                      <code>{tc.source_snippet}</code>
-                                    </pre>
-                                  </div>
-                                )}
-                              </div>
-                            )}
-                          </div>
-                        );
-                      })}
-                  </div>
+          {/* Source/Report File Pre Container */}
+          {selectedFile && files[selectedFile] ? (
+            <pre className="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-xs font-mono text-indigo-300 overflow-auto h-[55vh] leading-relaxed select-text shadow-inner">
+              <code>{files[selectedFile]}</code>
+            </pre>
+          ) : selectedReport && reports[selectedReport] ? (
+            <pre className="bg-slate-950 p-6 rounded-2xl border border-slate-800 text-xs font-mono text-emerald-300 overflow-auto h-[55vh] leading-relaxed select-text shadow-inner">
+              <code>{reports[selectedReport]}</code>
+            </pre>
+          ) : (
+            <div className="h-[45vh] flex flex-col items-center justify-center text-slate-500 space-y-4">
+              <div className="h-16 w-16 bg-slate-900 border border-slate-800 rounded-full flex items-center justify-center text-indigo-500">
+                <Code className="h-8 w-8" />
+              </div>
+              <div className="text-center max-w-sm space-y-2">
+                <h4 className="font-bold text-slate-300">Code Workspace Empty</h4>
+                <p className="text-xs text-slate-400">
+                  {phase === 'DESIGN_APPROVED' || phase === 'planning'
+                    ? "Initialize the multi-agent orchestrator to generate files scaffolds."
+                    : "No source contents available for preview."}
+                </p>
+                
+                {(phase === 'DESIGN_APPROVED' || phase === 'planning') && (
+                  <button
+                    onClick={handleGenerateCode}
+                    disabled={generating}
+                    className="mt-4 flex items-center gap-2 py-2 px-5 bg-indigo-650 hover:bg-indigo-600 text-white font-extrabold rounded-lg text-xs uppercase tracking-wider transition-all disabled:opacity-50 mx-auto"
+                  >
+                    {generating && <RefreshCw className="h-3.5 w-3.5 animate-spin" />}
+                    Initialize Multi-Agent Scaffold
+                  </button>
                 )}
               </div>
-
-
             </div>
           )}
 
@@ -811,7 +550,7 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
         
         {/* Pipeline Stepper */}
         <div className="p-5 border-b border-slate-800 bg-[#0f1422]">
-          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-4">Pipeline Stepper</h4>
+          <h4 className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-4">Development Stepper</h4>
           <div className="space-y-4">
             {[
               { id: 'DEVELOPMENT_PLANNING', label: '1-3. Context & Planning', activePhases: ['DEVELOPMENT_PLANNING', 'DESIGN_APPROVED'] },
@@ -820,9 +559,8 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
               { id: 'AI_SELF_REVIEW', label: '6. AI Self-Review', activePhases: ['AI_SELF_REVIEW'] },
               { id: 'DOCUMENT_REFINEMENT', label: '7. Documentation Refinement', activePhases: ['DOCUMENT_REFINEMENT'] },
               { id: 'ARTIFACT_GENERATION', label: '8. Artifacts Generator', activePhases: ['ARTIFACT_GENERATION'] },
-              { id: 'GENERATING_TESTS', label: '9. Testing Agent (Gen & Exec)', activePhases: ['GENERATING_TESTS', 'EXECUTING_TESTS', 'test_case_generator', 'test_executor'] },
-              { id: 'WAITING_FOR_REVIEW', label: '10. Human Review Gate', activePhases: ['WAITING_FOR_REVIEW', 'ERROR'] },
-              { id: 'READY_FOR_TESTING', label: '11. Ready for Testing', activePhases: ['READY_FOR_TESTING'] }
+              { id: 'WAITING_FOR_REVIEW', label: '9. Gated Human Review', activePhases: ['WAITING_FOR_REVIEW', 'ERROR'] },
+              { id: 'READY_FOR_TESTING', label: '10. Ready for Testing Stage', activePhases: ['READY_FOR_TESTING'] }
             ].map((s) => {
               const isActive = s.activePhases.includes(phase);
               const isDone = 
@@ -832,8 +570,8 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
                 (s.id === 'AI_SELF_REVIEW' && phase !== 'DEVELOPMENT_PLANNING' && phase !== 'DESIGN_APPROVED' && phase !== 'GENERATING_CODE' && phase !== 'VALIDATING' && phase !== 'AI_SELF_REVIEW') ||
                 (s.id === 'DOCUMENT_REFINEMENT' && phase !== 'DEVELOPMENT_PLANNING' && phase !== 'DESIGN_APPROVED' && phase !== 'GENERATING_CODE' && phase !== 'VALIDATING' && phase !== 'AI_SELF_REVIEW' && phase !== 'DOCUMENT_REFINEMENT') ||
                 (s.id === 'ARTIFACT_GENERATION' && phase !== 'DEVELOPMENT_PLANNING' && phase !== 'DESIGN_APPROVED' && phase !== 'GENERATING_CODE' && phase !== 'VALIDATING' && phase !== 'AI_SELF_REVIEW' && phase !== 'DOCUMENT_REFINEMENT' && phase !== 'ARTIFACT_GENERATION') ||
-                (s.id === 'GENERATING_TESTS' && phase === 'WAITING_FOR_REVIEW' || phase === 'READY_FOR_TESTING') ||
-                (s.id === 'WAITING_FOR_REVIEW' && phase === 'READY_FOR_TESTING');
+                (s.id === 'WAITING_FOR_REVIEW' && phase === 'READY_FOR_TESTING') ||
+                (s.id === 'READY_FOR_TESTING' && phase === 'READY_FOR_TESTING');
               
               return (
                 <div key={s.id} className="flex items-center gap-3 text-xs">
@@ -864,7 +602,7 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
               <p className="text-[10px] text-slate-400 leading-normal">
                 {phase === 'ERROR' 
                   ? "Build check failed. You can inspect compiler error logs and click 'Reject & Revise' below."
-                  : "Review codebase output, scores, and test results. Approve to sign off, or select affected modules to reject."}
+                  : "Review codebase output and files manifest. Approve to transition to Testing Stage, or select affected modules to reject."}
               </p>
             </div>
 
@@ -894,10 +632,10 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
                 />
               </div>
 
-              {/* TARGETED REVISION SELECTION FOR STAGE 9 */}
+              {/* TARGETED REVISION SELECTION */}
               <div className="space-y-2 bg-slate-950 p-3 rounded-xl border border-slate-800">
                 <label className="text-[9px] font-extrabold text-rose-400 uppercase tracking-wider block">Targeted Revision Selection</label>
-                <span className="text-[9px] text-slate-500 block leading-tight mb-2">Check modules to regenerate on Reject. Failing test modules are pre-selected.</span>
+                <span className="text-[9px] text-slate-500 block leading-tight mb-2">Check modules to regenerate on Reject.</span>
                 <div className="space-y-1.5">
                   {[
                     { id: 'database', label: 'Database Agent' },
@@ -994,7 +732,6 @@ export const DevelopmentPanel: React.FC<DevelopmentPanelProps> = ({
     </div>
   );
 };
-
 
 const getReportName = (key: string) => {
   switch (key) {
