@@ -125,16 +125,43 @@ def start_development_generation(db: Session, project_id: str) -> Dict[str, Any]
             "execution_state": current_state.values.get("execution_state")
         }
 
+    proj = project_service.get_project(db, project_id)
+    if not proj:
+        raise ValueError(f"Project '{project_id}' not found.")
+
     design_doc, latest_design = design_service.get_latest_design_version(db, project_id)
     if not design_doc or design_doc.approval_status != "APPROVED" or not latest_design:
         raise ValueError("Linked project software design specs (SDD) must be approved before development generation.")
         
+    req = project_service.get_requirements(db, project_id)
     latest_req_ver = project_service.get_latest_srs_version(db, project_id)
-    if not latest_req_ver:
+    
+    # Check that requirements have been approved by human/system
+    is_req_approved = (
+        (req and req.approval_status == "APPROVED") or
+        (proj.status == "APPROVED" or proj.current_phase in ["DESIGN", "DEVELOPMENT", "TESTING"])
+    )
+    
+    if not is_req_approved and not latest_req_ver:
+        raise ValueError("Approved requirements specifications (SRS) document not found. Requirements must be generated and approved before development.")
+        
+    if not latest_req_ver or not latest_req_ver.raw_srs:
+        effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+        if effective_srs:
+            req = project_service.create_or_update_requirement_srs(
+                db, project_id, effective_srs, status="APPROVED", comments="Synchronized approved requirements for development"
+            )
+            latest_req_ver = project_service.get_latest_srs_version(db, project_id)
+            
+    if not latest_req_ver or not latest_req_ver.raw_srs:
         raise ValueError("Approved requirements specifications (SRS) document not found.")
         
     from ..schemas import SRSOutput
-    approved_srs = SRSOutput.parse_safely(json.loads(latest_req_ver.raw_srs)).dict()
+    try:
+        raw_srs_dict = json.loads(latest_req_ver.raw_srs)
+    except Exception:
+        raw_srs_dict = {}
+    approved_srs = SRSOutput.parse_safely(raw_srs_dict).dict()
     approved_sdd = json.loads(latest_design.raw_sdd)
     
     project_service.log_activity(db, project_id, "DEVELOPMENT_STARTED", "Generating project codebase scaffolds...")

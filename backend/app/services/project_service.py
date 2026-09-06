@@ -210,7 +210,22 @@ def create_version_snapshot(db: Session, project_id: str, document: Dict[str, An
 def get_requirements(db: Session, project_id: str) -> models.Requirement:
     return db.query(models.Requirement).filter(models.Requirement.project_id == project_id).first()
 
-def create_or_update_requirement_srs(db: Session, project_id: str, srs_data: Dict[str, Any], status: str = "PENDING", comments: str = "") -> models.Requirement:
+def create_or_update_requirement_srs(db: Session, project_id: str, srs_data: Any, status: str = "PENDING", comments: str = "") -> models.Requirement:
+    # Safely convert to dict
+    if hasattr(srs_data, "model_dump"):
+        raw_dict = srs_data.model_dump()
+    elif hasattr(srs_data, "dict"):
+        raw_dict = srs_data.dict()
+    elif isinstance(srs_data, dict):
+        raw_dict = srs_data
+    elif isinstance(srs_data, str):
+        try:
+            raw_dict = json.loads(srs_data)
+        except Exception:
+            raw_dict = {"project_name": "Project", "raw_content": srs_data}
+    else:
+        raw_dict = {"project_name": "Project"}
+
     # Check if a requirement already exists for this project
     req = get_requirements(db, project_id)
     if not req:
@@ -230,7 +245,7 @@ def create_or_update_requirement_srs(db: Session, project_id: str, srs_data: Dic
     req_version = models.RequirementVersion(
         requirement_id=req.id,
         version_num=version_num,
-        raw_srs=json.dumps(srs_data),
+        raw_srs=json.dumps(raw_dict),
         reviewer_comments=comments
     )
     db.add(req_version)

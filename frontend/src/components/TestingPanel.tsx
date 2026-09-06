@@ -1209,7 +1209,7 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({
                 Export the authoritative 17-section testing audit document in any format for regulatory compliance, engineering sign-off, or stakeholder presentations.
               </p>
 
-              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 pt-2">
+              <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-3 pt-2">
                 {/* PDF */}
                 <button
                   onClick={() => handleExportReport('pdf')}
@@ -1234,6 +1234,19 @@ export const TestingPanel: React.FC<TestingPanelProps> = ({
                   </div>
                   <span className="text-xs font-black text-slate-200 block">Word Document</span>
                   <span className="text-[10px] text-blue-400 font-bold block uppercase">.docx (Editable)</span>
+                </button>
+
+                {/* MD */}
+                <button
+                  onClick={() => handleExportReport('md')}
+                  disabled={exportingFormat !== null}
+                  className="bg-slate-900 hover:bg-slate-800 border border-purple-500/30 hover:border-purple-500/60 rounded-xl p-3 text-center space-y-2 transition-all group disabled:opacity-50"
+                >
+                  <div className="h-8 w-8 rounded-lg bg-purple-500/10 text-purple-400 flex items-center justify-center mx-auto group-hover:scale-110 transition-transform">
+                    {exportingFormat === 'md' ? <RefreshCw className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  </div>
+                  <span className="text-xs font-black text-slate-200 block">Markdown</span>
+                  <span className="text-[10px] text-purple-400 font-bold block uppercase">.md (Documentation)</span>
                 </button>
 
                 {/* JSON */}

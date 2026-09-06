@@ -10,6 +10,7 @@ from .design_state import DesignAgentState
 from ..schemas import SDDOutput, ProjectDocument
 from ..services.llm_provider import get_llm
 from ..prompts.design_prompts import SDD_GENERATOR_SYSTEM_PROMPT
+from sqlalchemy.orm import Session
 from ..database import sqlite_checkpointer, SessionLocal
 from ..services import project_service, json_repair
 
@@ -41,8 +42,11 @@ Return the output as a JSON object containing a list of gaps:
 Do not write markdown block ticks or other chat formatting. Return ONLY the raw valid JSON.
 """
 
-def save_sdd_version_to_db(project_id: str, sdd_data: Any, status: str = "PENDING", comments: str = ""):
-    db = SessionLocal()
+def save_sdd_version_to_db(project_id: str, sdd_data: Any, status: str = "PENDING", comments: str = "", db: Optional[Session] = None):
+    should_close = False
+    if db is None:
+        db = SessionLocal()
+        should_close = True
     try:
         proj = project_service.get_project(db, project_id)
         if not proj:
@@ -58,6 +62,11 @@ def save_sdd_version_to_db(project_id: str, sdd_data: Any, status: str = "PENDIN
             sdd_dict = {}
 
         latest_req_ver = project_service.get_latest_srs_version(db, project_id)
+        if not latest_req_ver:
+            effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+            if effective_srs:
+                project_service.create_or_update_requirement_srs(db, project_id, effective_srs, status="APPROVED", comments="Auto-synced for Design Specification")
+                latest_req_ver = project_service.get_latest_srs_version(db, project_id)
         # Fallback to general requirement check if version missing
         req_ver_id = latest_req_ver.id if latest_req_ver else "fallback-req-ver-id"
             
@@ -92,9 +101,9 @@ def save_sdd_version_to_db(project_id: str, sdd_data: Any, status: str = "PENDIN
         db.add(design_version)
         db.commit()
         
-        project_service.log_activity(db, project_id, "DESIGN_VERSION_SAVED", f"SDD version {version_num} generated/saved with status: {status}")
     finally:
-        db.close()
+        if should_close:
+            db.close()
 
 # ----------------- NODES & MULTI-STAGE REASONING -----------------
 

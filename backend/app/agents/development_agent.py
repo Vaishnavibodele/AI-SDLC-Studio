@@ -173,10 +173,15 @@ def development_context_builder(state: DevelopmentAgentState) -> Dict[str, Any]:
     try:
         proj = project_service.get_project(db, project_id)
         latest_req_ver = project_service.get_latest_srs_version(db, project_id)
+        if not latest_req_ver:
+            effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+            if effective_srs:
+                project_service.create_or_update_requirement_srs(db, project_id, effective_srs, status="APPROVED", comments="Auto-synced for Development Context")
+                latest_req_ver = project_service.get_latest_srs_version(db, project_id)
         design_doc, latest_design = design_service.get_latest_design_version(db, project_id)
         
-        srs_dict = json.loads(latest_req_ver.raw_srs) if latest_req_ver else {}
-        sdd_dict = json.loads(latest_design.raw_sdd) if latest_design else {}
+        srs_dict = json.loads(latest_req_ver.raw_srs) if (latest_req_ver and latest_req_ver.raw_srs) else {}
+        sdd_dict = json.loads(latest_design.raw_sdd) if (latest_design and latest_design.raw_sdd) else {}
         
         # Load previous versions if available
         prev_vers_list = db.query(project_service.models.DevelopmentVersion).filter(

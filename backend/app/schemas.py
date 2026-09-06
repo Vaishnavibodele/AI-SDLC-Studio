@@ -165,19 +165,42 @@ class SRSOutput(BaseModel):
     requirement_traceability_matrix: List[TraceabilityItem] = Field(default_factory=list, description="Requirement traceability mappings mapped to stable IDs")
 
     @classmethod
-    def parse_safely(cls, raw_srs_dict: dict) -> "SRSOutput":
-        data = dict(raw_srs_dict)
+    def parse_safely(cls, raw_srs_dict: Any) -> "SRSOutput":
+        if hasattr(raw_srs_dict, "model_dump"):
+            data = raw_srs_dict.model_dump()
+        elif hasattr(raw_srs_dict, "dict"):
+            data = raw_srs_dict.dict()
+        elif isinstance(raw_srs_dict, dict):
+            data = dict(raw_srs_dict)
+        elif isinstance(raw_srs_dict, str):
+            try:
+                data = json.loads(raw_srs_dict)
+            except Exception:
+                data = {"project_name": "Project"}
+        else:
+            data = {}
+
         for field_name, field_def in cls.model_fields.items():
-            if field_name not in data:
-                ann = field_def.annotation
-                if ann == str:
-                    data[field_name] = f"Placeholder legacy {field_name}"
-                elif getattr(ann, "__origin__", None) is list:
+            ann = field_def.annotation
+            is_list = getattr(ann, "__origin__", None) is list or (hasattr(ann, "__args__") and any(getattr(arg, "__origin__", None) is list for arg in getattr(ann, "__args__", [])))
+            
+            if field_name not in data or data[field_name] is None:
+                if is_list:
                     data[field_name] = []
+                elif ann == str:
+                    data[field_name] = f"Standard {field_name.replace('_', ' ').title()}"
                 elif getattr(ann, "__origin__", None) is dict:
                     data[field_name] = {}
                 else:
                     data[field_name] = ""
+            else:
+                val = data[field_name]
+                if is_list and isinstance(val, str):
+                    data[field_name] = [val] if val.strip() else []
+                elif not is_list and isinstance(val, list):
+                    data[field_name] = "\n".join(str(item) for item in val)
+                elif not is_list and isinstance(val, dict):
+                    data[field_name] = json.dumps(val)
         return cls(**data)
 
 # --- API Models ---

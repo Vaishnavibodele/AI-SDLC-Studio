@@ -10,21 +10,85 @@ def get_design_config(project_id: str) -> Dict[str, Any]:
     # Namespaced thread ID as requested: "design:{project_id}"
     return {"configurable": {"thread_id": f"design:{project_id}"}}
 
-def get_design_state_details(project_id: str, db: Session) -> Dict[str, Any]:
-    config = get_design_config(project_id)
-    state = compiled_design_graph.get_state(config)
-    
-    # Load requirements document from ProjectAgentState
+def get_or_create_approved_document(db: Session, project_id: str) -> Optional[ProjectDocument]:
     agent_state = db.query(project_service.models.ProjectAgentState).filter(
         project_service.models.ProjectAgentState.project_id == project_id
     ).first()
     
-    approved_document = None
     if agent_state and agent_state.document:
         try:
-            approved_document = ProjectDocument(**json.loads(agent_state.document))
+            return ProjectDocument(**json.loads(agent_state.document))
         except Exception:
             pass
+            
+    proj = project_service.get_project(db, project_id)
+    if not proj:
+        return None
+        
+    effective_srs, ver = project_service.get_effective_srs_data(db, project_id)
+    if not effective_srs:
+        return None
+        
+    from .. import schemas
+    func_reqs = []
+    for i, fr in enumerate(effective_srs.get("functional_requirements", [])):
+        req_title = fr.split("\n")[0] if isinstance(fr, str) else str(fr)
+        func_reqs.append(schemas.Requirement(
+            requirement_id=f"REQ-F{i+1:03d}",
+            title=req_title[:80],
+            statement=fr if isinstance(fr, str) else str(fr),
+            requirement_type="functional",
+            priority="must_have",
+            status=schemas.RequirementStatus.confirmed,
+            source=schemas.RequirementSource(source_type=schemas.SourceType.user_input, confidence=1.0)
+        ))
+    for i, nfr in enumerate(effective_srs.get("non_functional_requirements", [])):
+        nfr_title = nfr.split("\n")[0] if isinstance(nfr, str) else str(nfr)
+        func_reqs.append(schemas.Requirement(
+            requirement_id=f"REQ-NF{i+1:03d}",
+            title=nfr_title[:80],
+            statement=nfr if isinstance(nfr, str) else str(nfr),
+            requirement_type="non_functional",
+            priority="must_have",
+            status=schemas.RequirementStatus.confirmed,
+            source=schemas.RequirementSource(source_type=schemas.SourceType.user_input, confidence=1.0)
+        ))
+        
+    goals = effective_srs.get("business_objectives")
+    if isinstance(goals, str):
+        goals = [goals]
+    elif not isinstance(goals, list):
+        goals = ["Streamline enterprise automation.", "Ensure high operational availability."]
+
+    doc = ProjectDocument(
+        project_id=project_id,
+        version=ver or 1,
+        project_summary=effective_srs.get("executive_summary") or proj.description or proj.name,
+        problem_statement=effective_srs.get("problem_statement") or proj.description,
+        business_goals=goals,
+        requirements=func_reqs,
+        assumptions=effective_srs.get("assumptions", []),
+        constraints=effective_srs.get("constraints", []),
+        risks=effective_srs.get("risks", [])
+    )
+    
+    # Save into agent_state for consistent persistence
+    try:
+        if not agent_state:
+            agent_state = project_service.models.ProjectAgentState(project_id=project_id)
+            db.add(agent_state)
+        agent_state.document = json.dumps(doc.dict())
+        db.commit()
+    except Exception:
+        pass
+        
+    return doc
+
+def get_design_state_details(project_id: str, db: Session) -> Dict[str, Any]:
+    config = get_design_config(project_id)
+    state = compiled_design_graph.get_state(config)
+    
+    approved_document = get_or_create_approved_document(db, project_id)
             
     if not state.values:
         return {
@@ -68,15 +132,9 @@ def get_design_state_details(project_id: str, db: Session) -> Dict[str, Any]:
 def start_design_generation(db: Session, project_id: str) -> Dict[str, Any]:
     config = get_design_config(project_id)
     
-    # Load approved requirement document
-    agent_state = db.query(project_service.models.ProjectAgentState).filter(
-        project_service.models.ProjectAgentState.project_id == project_id
-    ).first()
-    
-    if not agent_state or not agent_state.document:
+    approved_document = get_or_create_approved_document(db, project_id)
+    if not approved_document:
         raise ValueError("Linked project requirements must exist before design generation.")
-        
-    approved_document = ProjectDocument(**json.loads(agent_state.document))
     
     # Log start
     project_service.log_activity(db, project_id, "DESIGN_STARTED", "Generating architecture design...")
@@ -139,17 +197,12 @@ def resume_design_approval(
         sdd = latest_state.values.get("sdd") if latest_state.values else None
         
         if not sdd:
-            # Fetch approved document
-            agent_state = db.query(project_service.models.ProjectAgentState).filter(
-                project_service.models.ProjectAgentState.project_id == project_id
-            ).first()
-            if agent_state and agent_state.document:
-                approved_doc = ProjectDocument(**json.loads(agent_state.document))
-                from ..agents.design_agent import build_fallback_sdd
-                sdd = build_fallback_sdd(approved_doc, {"srs_status": "APPROVED"})
-                
+            approved_doc = get_or_create_approved_document(db, project_id)
+            from ..agents.design_agent import build_fallback_sdd
+            sdd = build_fallback_sdd(approved_doc, {"srs_status": "APPROVED"})
+
         if sdd:
-            save_sdd_version_to_db(project_id, sdd, status="APPROVED", comments=comments or "Design Specification Approved")
+            save_sdd_version_to_db(project_id, sdd, status="APPROVED", comments=comments or "Design Specification Approved", db=db)
             
         project_service.update_project_status(db, project_id, "DESIGN", "APPROVED")
         project = project_service.get_project(db, project_id)
@@ -208,15 +261,19 @@ def resume_design_approval(
     errors = state_values.get("validation_errors") or outputs.get("validation_errors", [])
     
     # Sync database based on approval or rejection
-    is_completed_or_finalized = (phase in ("completed", "approved") or stage == "DESIGN_FINALIZATION") and status == "APPROVED"
+    is_completed_or_finalized = (phase in ("completed", "approved") or stage == "DESIGN_FINALIZATION" or status == "APPROVED") and status == "APPROVED"
     if is_completed_or_finalized:
         phase = "approved"
         try:
             compiled_design_graph.update_state(config, {"phase": "approved"})
         except Exception:
             pass
+        if not sdd:
+            approved_doc = get_or_create_approved_document(db, project_id)
+            from ..agents.design_agent import build_fallback_sdd
+            sdd = build_fallback_sdd(approved_doc, {"srs_status": "APPROVED"})
         if sdd:
-            save_sdd_version_to_db(project_id, sdd, status="APPROVED", comments=comments or "Design Approved")
+            save_sdd_version_to_db(project_id, sdd, status="APPROVED", comments=comments or "Design Approved", db=db)
         project_service.update_project_status(db, project_id, "DESIGN", "APPROVED")
         project = project_service.get_project(db, project_id)
         if project:

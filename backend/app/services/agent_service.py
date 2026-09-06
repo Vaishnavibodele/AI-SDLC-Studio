@@ -129,11 +129,14 @@ def run_chat_step(db: Session, project_id: str, message_text: str) -> Dict[str, 
     
     # If completed, create version snapshot and transition to design phase
     if phase == "completed" and document:
-        project_service.create_version_snapshot(db, project_id, doc_dict, "Final approval")
+        effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+        srs_payload = effective_srs or doc_dict
+        project_service.create_or_update_requirement_srs(db, project_id, srs_payload, status="APPROVED", comments="Completed Requirement Phase")
+        project_service.create_version_snapshot(db, project_id, srs_payload, "Final approval")
         project = project_service.get_project(db, project_id)
         if project:
             project.current_phase = "DESIGN"
-            project.status = "IN_PROGRESS"
+            project.status = "APPROVED"
             db.commit()
             project_service.log_activity(db, project_id, "PHASE_TRANSITION", "Project transitioned automatically from REQUIREMENT to DESIGN phase.")
             
@@ -175,28 +178,43 @@ def resume_approval_step(
     state = compiled_graph.get_state(config)
     
     if not state.next:
-        print(f"[Requirement Service] Graph for {project_id} not in interrupted state. Auto-completing SRS & transitioning to DESIGN...")
+        print(f"[Requirement Service] Graph for {project_id} not in interrupted state. Finalizing SRS & transitioning to DESIGN...")
         state_details = get_agent_state_details(project_id)
         doc = state_details.get("document")
         doc_dict = doc.dict() if (doc and hasattr(doc, "dict")) else doc
         
-        project = project_service.get_project(db, project_id)
-        if project:
-            project.current_phase = "DESIGN"
-            project.status = "IN_PROGRESS"
-            db.commit()
-            project_service.log_activity(db, project_id, "PHASE_TRANSITION", "Project transitioned automatically from REQUIREMENT to DESIGN phase.")
+        # 1. Log review in database
+        review_schema = project_service.schemas.HumanReviewSubmit(
+            status=status,
+            comments=comments,
+            reviewer_name=reviewer_name,
+            stage=stage or "FINALIZATION"
+        )
+        project_service.submit_human_review(db, project_id, "REQUIREMENT", review_schema)
+        
+        if status == "APPROVED":
+            effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+            srs_payload = effective_srs or doc_dict or {"project_name": "Project"}
+            project_service.create_or_update_requirement_srs(db, project_id, srs_payload, status="APPROVED", comments=comments or "SRS Approved")
+            project_service.create_version_snapshot(db, project_id, srs_payload, comments or "SRS Approved")
             
-            if doc_dict:
-                project_service.create_version_snapshot(db, project_id, doc_dict, comments or "SRS Approved")
+            project = project_service.get_project(db, project_id)
+            if project:
+                project.current_phase = "DESIGN"
+                project.status = "APPROVED"
+                db.commit()
+                project_service.log_activity(db, project_id, "PHASE_TRANSITION", "Project transitioned automatically from REQUIREMENT to DESIGN phase.")
                 
-            from . import design_service
-            try:
-                design_service.start_design_generation(db, project_id)
-            except Exception as de:
-                print(f"Error auto-starting design generation: {de}")
-                pass
-        return {"status": "completed", "current_phase": "DESIGN"}
+                from . import design_service
+                try:
+                    design_service.start_design_generation(db, project_id)
+                except Exception as de:
+                    print(f"Error auto-starting design generation: {de}")
+                    pass
+            return {"status": "completed", "current_phase": "DESIGN"}
+        else:
+            project_service.update_project_status(db, project_id, "REQUIREMENT", "REJECTED")
+            return {"status": "rejected", "current_phase": "REQUIREMENT"}
         
     active_node = state.next[0]
     
@@ -245,13 +263,13 @@ def resume_approval_step(
     doc_dict = document.dict() if (document and hasattr(document, "dict")) else document
     mem_dict = memory.dict() if (memory and hasattr(memory, "dict")) else memory
     
-    is_completed_or_finalized = (phase == "completed" or stage == "FINALIZATION") and status == "APPROVED"
+    is_completed_or_finalized = (phase == "completed" or stage == "FINALIZATION" or status == "APPROVED")
     
     project_service.update_with_state(
         db=db,
         project_id=project_id,
         phase="REQUIREMENT" if not is_completed_or_finalized else "DESIGN",
-        status="IN_PROGRESS" if not is_completed_or_finalized else "APPROVED",
+        status="IN_PROGRESS" if status != "APPROVED" else "APPROVED",
         current_state=phase if not is_completed_or_finalized else "completed",
         document=doc_dict,
         messages=messages,
@@ -261,10 +279,12 @@ def resume_approval_step(
         last_reviewer_comments=comments
     )
     
-    # If completed or finalization approved, create version snapshot and transition to design phase
-    if is_completed_or_finalized and document:
-        project_service.create_or_update_requirement_srs(db, project_id, doc_dict, status="APPROVED", comments=comments or "SRS Approved")
-        project_service.create_version_snapshot(db, project_id, doc_dict, comments)
+    # If approved, create SRS and version snapshot and transition to design phase
+    if status == "APPROVED":
+        effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+        srs_payload = effective_srs or doc_dict or {"project_name": "Project"}
+        project_service.create_or_update_requirement_srs(db, project_id, srs_payload, status="APPROVED", comments=comments or "SRS Approved")
+        project_service.create_version_snapshot(db, project_id, srs_payload, comments)
         project = project_service.get_project(db, project_id)
         if project:
             project.current_phase = "DESIGN"

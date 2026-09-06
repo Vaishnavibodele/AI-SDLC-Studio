@@ -145,9 +145,15 @@ def approve_requirements_stage(project_id: str, review: schemas.HumanReviewSubmi
     except Exception as e:
         import traceback
         traceback.print_exc()
-        # Fallback to force transition to DESIGN phase
+        # Fallback to force transition to DESIGN phase with approved SRS
+        try:
+            effective_srs, _ = project_service.get_effective_srs_data(db, project_id)
+            if effective_srs:
+                project_service.create_or_update_requirement_srs(db, project_id, effective_srs, status="APPROVED", comments=review.comments or "SRS Approved")
+        except Exception as se:
+            print(f"Fallback SRS save error: {se}")
         proj.current_phase = "DESIGN"
-        proj.status = "IN_PROGRESS"
+        proj.status = "APPROVED"
         db.commit()
         try:
             design_service.start_design_generation(db, project_id)
@@ -269,8 +275,13 @@ def get_project_status(project_id: str, db: Session = Depends(get_db)):
     # Fetch database record for SRS
     latest_srs = project_service.get_latest_srs_version(db, project_id)
     srs_data = None
-    if latest_srs:
-        srs_data = json.loads(latest_srs.raw_srs)
+    if latest_srs and latest_srs.raw_srs:
+        try:
+            srs_data = json.loads(latest_srs.raw_srs)
+        except Exception:
+            pass
+    if not srs_data and (proj.status == "APPROVED" or proj.current_phase in ["DESIGN", "DEVELOPMENT", "TESTING"]):
+        srs_data, _ = project_service.get_effective_srs_data(db, project_id)
         
     # Fetch database record for SDD
     design_doc, latest_design = design_service.get_latest_design_version(db, project_id)
@@ -470,7 +481,8 @@ def approve_or_reject_design(project_id: str, review: schemas.HumanReviewSubmit,
         raise HTTPException(status_code=404, detail="Project not found")
         
     design_doc, _ = design_service.get_latest_design_version(db, project_id)
-    if not design_doc:
+    design_state = design_service.get_design_state_details(project_id, db)
+    if not design_doc and (not design_state or not design_state.get("sdd")):
         raise HTTPException(status_code=400, detail="No design document generated yet for this project")
         
     try:
@@ -479,7 +491,8 @@ def approve_or_reject_design(project_id: str, review: schemas.HumanReviewSubmit,
             project_id=project_id,
             status=review.status,
             comments=review.comments,
-            reviewer_name=review.reviewer_name
+            reviewer_name=review.reviewer_name,
+            stage=review.stage
         )
         return result
     except Exception as e:
@@ -1082,17 +1095,26 @@ def reject_testing_report(project_id: str, body: dict, db: Session = Depends(get
 @app.get("/api/projects/{project_id}/testing/export/{fmt}")
 @app.get("/api/projects/{project_id}/testing/download/{fmt}")
 def export_testing_report(project_id: str, fmt: str, db: Session = Depends(get_db)):
-    """Export the Testing Agent comprehensive report for a project in the requested format (pdf, docx, json, html, csv)."""
+    """Export the Testing Agent comprehensive report for a project in the requested format (pdf, docx, md, json, html, csv)."""
     fmt_lower = fmt.lower()
-    if fmt_lower not in ["pdf", "docx", "json", "html", "csv"]:
-        raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}. Must be pdf, docx, json, html, or csv.")
+    if fmt_lower not in ["pdf", "docx", "md", "json", "html", "csv"]:
+        raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}. Must be pdf, docx, md, json, html, or csv.")
+
+    media_types = {
+        "pdf": "application/pdf",
+        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        "md": "text/markdown; charset=utf-8",
+        "json": "application/json",
+        "html": "text/html; charset=utf-8",
+        "csv": "text/csv; charset=utf-8",
+    }
 
     # 1. Try to fetch stored report from Testing Agent
     try:
         r = requests.get(f"{TESTING_AGENT_URL}/testing/report/export/{project_id}?fmt={fmt_lower}", timeout=60)
         if r.status_code == 200:
-            media_type = r.headers.get("content-type", "application/octet-stream")
-            content_disposition = r.headers.get("content-disposition", f'attachment; filename="test-report-{project_id}.{fmt_lower}"')
+            media_type = r.headers.get("content-type", media_types.get(fmt_lower, "application/octet-stream"))
+            content_disposition = r.headers.get("content-disposition", f'attachment; filename="testing-report-{project_id}.{fmt_lower}"')
             return Response(content=r.content, media_type=media_type, headers={"Content-Disposition": content_disposition})
     except requests.exceptions.RequestException:
         pass
@@ -1103,8 +1125,8 @@ def export_testing_report(project_id: str, fmt: str, db: Session = Depends(get_d
         r = requests.post(f"{TESTING_AGENT_URL}/testing/report/export?fmt={fmt_lower}", json=payload, timeout=90)
         if r.status_code != 200:
             raise HTTPException(status_code=r.status_code, detail=r.text)
-        media_type = r.headers.get("content-type", "application/octet-stream")
-        content_disposition = r.headers.get("content-disposition", f'attachment; filename="test-report-{project_id}.{fmt_lower}"')
+        media_type = r.headers.get("content-type", media_types.get(fmt_lower, "application/octet-stream"))
+        content_disposition = r.headers.get("content-disposition", f'attachment; filename="testing-report-{project_id}.{fmt_lower}"')
         return Response(content=r.content, media_type=media_type, headers={"Content-Disposition": content_disposition})
     except requests.exceptions.RequestException as e:
         raise HTTPException(status_code=502, detail=f"Testing Agent export service error: {str(e)}")
