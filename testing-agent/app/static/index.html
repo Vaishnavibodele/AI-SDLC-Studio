@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Building SDLC — Testing Agent Command Center</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- FontAwesome for icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Main Style Sheet -->
+    <link rel="stylesheet" href="/dashboard/style.css">
+</head>
+<body>
+    <div class="dashboard-container">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i class="fa-solid fa-microchip brand-icon"></i>
+                <div class="brand-text">
+                    <h2>AI SDLC</h2>
+                    <span>Smart Monitoring</span>
+                </div>
+            </div>
+            
+            <nav class="sidebar-nav">
+                <div class="nav-section">
+                    <span class="section-title">SDLC Stages</span>
+                    <ul>
+                        <li><a href="#" class="disabled"><i class="fa-solid fa-list-check"></i> Requirement</a></li>
+                        <li><a href="#" class="disabled"><i class="fa-solid fa-compass"></i> Design</a></li>
+                        <li><a href="#" class="disabled"><i class="fa-solid fa-code"></i> Development</a></li>
+                        <li class="active">
+                            <a href="#">
+                                <i class="fa-solid fa-shield-halved"></i> TESTING
+                                <span class="active-dot"></span>
+                            </a>
+                        </li>
+                        <li><a href="#" class="disabled"><i class="fa-solid fa-cloud-arrow-up"></i> Deployment</a></li>
+                    </ul>
+                </div>
+                
+                <div class="nav-section">
+                    <span class="section-title">Quality Gate Menu</span>
+                    <ul>
+                        <li class="active-sub"><a href="#intelligence"><i class="fa-solid fa-brain"></i> Testing Intelligence</a></li>
+                        <li><a href="#execution"><i class="fa-solid fa-play"></i> Test Execution <span class="badge-phase">P3</span></a></li>
+                        <li><a href="#results"><i class="fa-solid fa-square-poll-horizontal"></i> Results <span class="badge-phase">P3</span></a></li>
+                        <li><a href="#gate"><i class="fa-solid fa-door-closed"></i> Quality Gate <span class="badge-phase">P3</span></a></li>
+                        <li><a href="#reports"><i class="fa-solid fa-file-invoice"></i> Reports <span class="badge-phase">P3</span></a></li>
+                    </ul>
+                </div>
+            </nav>
+            
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar"><i class="fa-solid fa-user-gear"></i></div>
+                    <div class="user-info">
+                        <h4>QA Lead Agent</h4>
+                        <span>Quality Gate Tier-5</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+        
+        <!-- MAIN DASHBOARD CONTENT -->
+        <main class="main-content">
+            
+            <!-- HEADER -->
+            <header class="main-header">
+                <div class="header-title">
+                    <h1>TESTING AGENT</h1>
+                    <p class="subtitle">AI QUALITY CONTROL CENTER</p>
+                </div>
+                <div class="header-actions">
+                    <div class="status-indicator">
+                        <span class="status-dot pulses"></span>
+                        <span id="connection-status">Backend Connected</span>
+                    </div>
+                    <button class="btn btn-primary" id="btn-start-testing">
+                        <i class="fa-solid fa-play"></i> START TESTING
+                    </button>
+                </div>
+            </header>
+            
+            <!-- PIPELINE WORKFLOW VISUALIZER -->
+            <section class="pipeline-section">
+                <h3><i class="fa-solid fa-diagram-next"></i> Workflow Execution Pipeline</h3>
+                <div class="pipeline-container">
+                    <div class="pipeline-node" id="node-input">
+                        <div class="node-icon"><i class="fa-solid fa-file-import"></i></div>
+                        <span class="node-label">INPUT</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node" id="node-context">
+                        <div class="node-icon"><i class="fa-solid fa-folder-open"></i></div>
+                        <span class="node-label">CONTEXT</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node" id="node-requirements">
+                        <div class="node-icon"><i class="fa-solid fa-brain"></i></div>
+                        <span class="node-label">REQUIREMENTS</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node" id="node-risk">
+                        <div class="node-icon"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                        <span class="node-label">RISK</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node" id="node-impact">
+                        <div class="node-icon"><i class="fa-solid fa-bolt"></i></div>
+                        <span class="node-label">IMPACT</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node" id="node-coverage">
+                        <div class="node-icon"><i class="fa-solid fa-bullseye"></i></div>
+                        <span class="node-label">COVERAGE</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node" id="node-strategy">
+                        <div class="node-icon"><i class="fa-solid fa-chess"></i></div>
+                        <span class="node-label">STRATEGY</span>
+                        <span class="node-status">Pending</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node coming-soon" id="node-tests">
+                        <div class="node-icon"><i class="fa-solid fa-vial"></i></div>
+                        <span class="node-label">TESTS</span>
+                        <span class="node-status">Phase 3</span>
+                    </div>
+                    
+                    <div class="pipeline-connector"></div>
+                    
+                    <div class="pipeline-node coming-soon" id="node-gate">
+                        <div class="node-icon"><i class="fa-solid fa-door-open"></i></div>
+                        <span class="node-label">QUALITY GATE</span>
+                        <span class="node-status">Phase 3</span>
+                    </div>
+                </div>
+            </section>
+            
+            <!-- MAIN GRID CONTENT -->
+            <div class="dashboard-grid">
+                
+                <!-- LEFT COLUMN: INPUT EDITOR & NETWORKS -->
+                <div class="grid-col-left">
+                    
+                    <!-- INPUT PAYLOAD FORM -->
+                    <div class="card card-input">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-keyboard"></i> Test Ingestion Configuration</h3>
+                            <div class="form-switches">
+                                <button class="btn btn-text active" id="btn-load-valid">Load Valid</button>
+                                <button class="btn btn-text" id="btn-load-invalid">Load Invalid</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div class="form-group">
+                                <label for="input-payload">JSON Request Payload</label>
+                                <textarea id="input-payload" placeholder="Paste your testing payload here..."></textarea>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- TESTING AGENT LAYER IDENTITY -->
+                    <div class="card card-agent-identity">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-circle-nodes"></i> Testing Agent Architecture</h3>
+                        </div>
+                        <div class="card-body">
+                            <div class="agent-network-container">
+                                <div class="network-ring">
+                                    <div class="network-center">
+                                        <i class="fa-solid fa-shield-halved main-shield"></i>
+                                        <span class="agent-tag">TESTING AGENT</span>
+                                    </div>
+                                    
+                                    <!-- Neural Network items orbiting -->
+                                    <div class="network-node node-unit active-node">UNIT</div>
+                                    <div class="network-node node-api active-node">API</div>
+                                    <div class="network-node node-integration active-node">INTEGRATION</div>
+                                    <div class="network-node node-security">SECURITY</div>
+                                    <div class="network-node node-ui">UI</div>
+                                    <div class="network-node node-regression">REGRESSION</div>
+                                </div>
+                            </div>
+                            <div class="agent-status-footer">
+                                <span class="footer-tag"><span class="success-dot"></span> ◉ SINGLE TESTING AGENT</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- RIGHT COLUMN: INTELLIGENCE CARDS & QUALITY GATE -->
+                <div class="grid-col-right">
+                    
+                    <!-- QUALITY GATE RELEASE READINESS -->
+                    <div class="card card-release-gate">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-clipboard-check"></i> Release Readiness</h3>
+                        </div>
+                        <div class="card-body readiness-grid">
+                            <div class="readiness-gauge">
+                                <div class="gauge-circle" id="gauge-circle-val">
+                                    <svg viewBox="0 0 36 36" class="circular-chart">
+                                        <path class="circle-bg" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                        <path class="circle" stroke-dasharray="0, 100" id="gauge-progress" d="M18 2.0845 a 15.9155 15.9155 0 0 1 0 31.831 a 15.9155 15.9155 0 0 1 0 -31.831" />
+                                    </svg>
+                                    <div class="percentage" id="readiness-percent">0%</div>
+                                </div>
+                                <span class="readiness-status" id="readiness-status-lbl"><span class="warning-dot"></span> AWAITING EXECUTION</span>
+                            </div>
+                            
+                            <div class="readiness-metrics">
+                                <div class="metric-item">
+                                    <span class="metric-name">Requirement Coverage</span>
+                                    <div class="metric-progress-bar">
+                                        <div class="progress" id="bar-req-cov" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value" id="val-req-cov">--</span>
+                                </div>
+                                
+                                <div class="metric-item">
+                                    <span class="metric-name">Risk Coverage Mapping</span>
+                                    <div class="metric-progress-bar">
+                                        <div class="progress" id="bar-risk-cov" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value" id="val-risk-cov">--</span>
+                                </div>
+                                
+                                <div class="metric-item coming-soon-text">
+                                    <span class="metric-name">Critical Tests Passed <span class="badge-phase-inline">P3</span></span>
+                                    <div class="metric-progress-bar">
+                                        <div class="progress disabled-progress" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value">0%</span>
+                                </div>
+                                
+                                <div class="metric-item coming-soon-text">
+                                    <span class="metric-name">Security Controls <span class="badge-phase-inline">P3</span></span>
+                                    <div class="metric-progress-bar">
+                                        <div class="progress disabled-progress" style="width: 0%"></div>
+                                    </div>
+                                    <span class="metric-value">0%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- INTELLIGENCE DETAILS CARDS -->
+                    <div class="intelligence-wrapper">
+                        
+                        <!-- REQUIREMENTS CARD -->
+                        <div class="card card-intelligence border-cyan" id="card-requirements">
+                            <div class="card-badge"><i class="fa-solid fa-list-check"></i> SRS / SDD</div>
+                            <h4>Requirements</h4>
+                            <div class="card-main-stat" id="stat-req-count">--</div>
+                            <p class="stat-subtitle">Testable Requirements Ingested</p>
+                            <div class="card-details-list" id="list-req-details">
+                                <span class="placeholder-text">Run tests to extract requirements</span>
+                            </div>
+                        </div>
+                        
+                        <!-- RISKS CARD -->
+                        <div class="card card-intelligence border-amber" id="card-risks">
+                            <div class="card-badge"><i class="fa-solid fa-triangle-exclamation"></i> System Risk</div>
+                            <h4>Risks Identified</h4>
+                            <div class="card-main-stat text-amber" id="stat-risk-count">--</div>
+                            <p class="stat-subtitle">Failure Modes Reasoning</p>
+                            <div class="card-details-list" id="list-risk-details">
+                                <span class="placeholder-text">Awaiting risk matrix analysis</span>
+                            </div>
+                        </div>
+                        
+                        <!-- CHANGE IMPACT CARD -->
+                        <div class="card card-intelligence border-coral" id="card-impact">
+                            <div class="card-badge"><i class="fa-solid fa-bolt"></i> Regression</div>
+                            <h4>Change Impact</h4>
+                            <div class="card-main-stat text-coral" id="stat-impact-level">--</div>
+                            <p class="stat-subtitle" id="stat-impact-subtitle">Regression Risk Level</p>
+                            <div class="card-details-list" id="list-impact-details">
+                                <span class="placeholder-text">No change metadata analyzed yet</span>
+                            </div>
+                        </div>
+                        
+                        <!-- TEST STRATEGY CARD -->
+                        <div class="card card-intelligence border-teal" id="card-strategy">
+                            <div class="card-badge"><i class="fa-solid fa-chess"></i> Blueprint</div>
+                            <h4>Test Strategy</h4>
+                            <div class="card-main-stat text-teal" id="stat-strategy-count">--</div>
+                            <p class="stat-subtitle">Recommended Actions</p>
+                            <div class="card-details-list" id="list-strategy-details">
+                                <span class="placeholder-text">Pending LLM test strategy blueprint</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- COMING SOON SECTION (PHASE 3) -->
+            <section class="card-coming-soon" id="execution-section">
+                <div class="coming-soon-lock">
+                    <i class="fa-solid fa-lock"></i>
+                    <h2>TEST EXECUTION & QUALITY REPORTS</h2>
+                    <p class="badge-coming-soon">COMING IN PHASE 3</p>
+                    <p class="lock-desc">Dynamic validation execution, security checks, and root-cause mapping are scheduled for Phase 3 integration.</p>
+                </div>
+            </section>
+            
+        </main>
+    </div>
+    <!-- Main Logic Script -->
+    <script src="/dashboard/app.js"></script>
+</body>
+</html>

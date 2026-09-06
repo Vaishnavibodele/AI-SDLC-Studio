@@ -1,0 +1,1218 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AI-SDLC Testing Agent — 8-Phase Autonomous Quality Gate</title>
+    <!-- Google Fonts: Outfit and JetBrains Mono -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- Theme CSS -->
+    <link rel="stylesheet" href="style.css">
+    <!-- Lucide Icons -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body>
+    <div class="command-center-container">
+        
+        <!-- SIDEBAR -->
+        <aside class="sidebar">
+            <div class="sidebar-brand">
+                <i data-lucide="shield-check" class="brand-icon"></i>
+                <div class="brand-text">
+                    <span class="brand-title">AI SDLC</span>
+                    <span class="brand-sub">STUDIO v4</span>
+                </div>
+            </div>
+            
+            <div class="sidebar-divider"></div>
+            
+            <nav class="sidebar-nav">
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="file-text"></i>
+                    <span>1. Requirement</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="trello"></i>
+                    <span>2. Design</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="code"></i>
+                    <span>3. Development</span>
+                </a>
+                <a href="#" class="nav-item active">
+                    <span class="active-indicator">▶</span>
+                    <i data-lucide="cpu" class="cyan-glow-icon"></i>
+                    <span>4. TESTING AGENT</span>
+                </a>
+                <a href="#" class="nav-item disabled">
+                    <i data-lucide="rocket"></i>
+                    <span>5. Deployment</span>
+                </a>
+                
+                <div class="sidebar-divider"></div>
+                
+                <div class="sidebar-section-title">8 TESTING PHASES</div>
+                <a href="#" class="nav-subitem active" data-phase-target="panel-phase1">
+                    <span class="phase-num-badge">P1</span>
+                    <span>Input Validation</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase2">
+                    <span class="phase-num-badge">P2</span>
+                    <span>Intelligence & Risks</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase3">
+                    <span class="phase-num-badge">P3</span>
+                    <span>Test Design</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase4">
+                    <span class="phase-num-badge">P4</span>
+                    <span>Test Execution</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase5">
+                    <span class="phase-num-badge">P5</span>
+                    <span>Infrastructure</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase6">
+                    <span class="phase-num-badge">P6</span>
+                    <span>Failure Analysis</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase7">
+                    <span class="phase-num-badge">P7</span>
+                    <span>Quality Gate</span>
+                </a>
+                <a href="#" class="nav-subitem" data-phase-target="panel-phase8">
+                    <span class="phase-num-badge">P8</span>
+                    <span>Report & Approval</span>
+                </a>
+            </nav>
+
+            <div class="sidebar-footer">
+                <div class="engine-tag">
+                    <i data-lucide="network"></i>
+                    <span>LangGraph Engine</span>
+                </div>
+            </div>
+        </aside>
+
+        <!-- MAIN CONTENT AREA -->
+        <div class="main-content">
+            
+            <!-- HEADER -->
+            <header class="app-header">
+                <div class="header-title-area">
+                    <div class="badge-row">
+                        <span class="badge badge-cyan">QUALITY GATEWAY</span>
+                        <span class="badge badge-outline" id="project-id-display">PROJECT: smart-building-001</span>
+                    </div>
+                    <h1>TESTING AGENT COMMAND CENTER</h1>
+                    <span class="subtitle">AUTONOMOUS 8-PHASE SDLC VERIFICATION & RELEASE GOVERNANCE</span>
+                </div>
+                <div class="header-controls">
+                    <div id="server-status" class="status-indicator checking">
+                        <span class="status-dot"></span>
+                        <span class="status-label">Checking Backend...</span>
+                    </div>
+                    <button type="button" id="btn-run-intelligence" class="btn btn-secondary" title="Run Phases 1 to 3: Validation, Intelligence, and Test Design">
+                        <i data-lucide="brain"></i> RUN INTELLIGENCE (P1–P3)
+                    </button>
+                    <button type="button" id="btn-run-all" class="btn btn-primary btn-glow" title="Execute all 8 testing phases through quality gate & report generation">
+                        <i data-lucide="play"></i> EXECUTE FULL WORKFLOW (P1–P8)
+                    </button>
+                </div>
+            </header>
+
+            <!-- 8-PHASE WORKFLOW PIPELINE VISUALIZER -->
+            <section class="workflow-visualizer-section">
+                <div class="section-title-sm">
+                    <div class="left-title">
+                        <i data-lucide="git-commit"></i>
+                        <span>8-PHASE EXECUTION WORKFLOW</span>
+                    </div>
+                    <div class="pipeline-legend">
+                        <span class="legend-item"><span class="dot dot-completed"></span> Completed</span>
+                        <span class="legend-item"><span class="dot dot-running"></span> Active</span>
+                        <span class="legend-item"><span class="dot dot-failed"></span> Failed</span>
+                        <span class="legend-item"><span class="dot dot-pending"></span> Pending</span>
+                    </div>
+                </div>
+
+                <div class="pipeline-container">
+                    <!-- Phase 1: Input Validation -->
+                    <div class="pipeline-node" id="node-p1" data-target="panel-phase1" title="Phase 1: Input Validation & Context Loading">
+                        <div class="node-inner">
+                            <i data-lucide="check-square"></i>
+                            <span class="ph-badge">P1</span>
+                        </div>
+                        <span class="node-name">VALIDATION</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-1">➔</div>
+
+                    <!-- Phase 2: Testing Intelligence -->
+                    <div class="pipeline-node" id="node-p2" data-target="panel-phase2" title="Phase 2: Requirements, Risks, Coverage, Impact & Strategy">
+                        <div class="node-inner">
+                            <i data-lucide="brain-circuit"></i>
+                            <span class="ph-badge">P2</span>
+                        </div>
+                        <span class="node-name">INTELLIGENCE</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-2">➔</div>
+
+                    <!-- Phase 3: Test Design -->
+                    <div class="pipeline-node" id="node-p3" data-target="panel-phase3" title="Phase 3: Test Cases, Scenarios, Data & Traceability">
+                        <div class="node-inner">
+                            <i data-lucide="file-code"></i>
+                            <span class="ph-badge">P3</span>
+                        </div>
+                        <span class="node-name">TEST DESIGN</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-3">➔</div>
+
+                    <!-- Phase 4: Test Execution -->
+                    <div class="pipeline-node" id="node-p4" data-target="panel-phase4" title="Phase 4: Multi-Module Test Suite Execution">
+                        <div class="node-inner">
+                            <i data-lucide="terminal"></i>
+                            <span class="ph-badge">P4</span>
+                        </div>
+                        <span class="node-name">EXECUTION</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-4">➔</div>
+
+                    <!-- Phase 5: Infrastructure -->
+                    <div class="pipeline-node" id="node-p5" data-target="panel-phase5" title="Phase 5: Runtime Concurrency, Retries & Artifacts">
+                        <div class="node-inner">
+                            <i data-lucide="server"></i>
+                            <span class="ph-badge">P5</span>
+                        </div>
+                        <span class="node-name">INFRASTRUCTURE</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-5">➔</div>
+
+                    <!-- Phase 6: Result Intelligence -->
+                    <div class="pipeline-node" id="node-p6" data-target="panel-phase6" title="Phase 6: Root Cause & Defect Triage">
+                        <div class="node-inner">
+                            <i data-lucide="search-code"></i>
+                            <span class="ph-badge">P6</span>
+                        </div>
+                        <span class="node-name">FAILURE ANALYSIS</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-6">➔</div>
+
+                    <!-- Phase 7: Quality Gate -->
+                    <div class="pipeline-node" id="node-p7" data-target="panel-phase7" title="Phase 7: Quality Gate & Release Readiness Score">
+                        <div class="node-inner">
+                            <i data-lucide="shield-alert"></i>
+                            <span class="ph-badge">P7</span>
+                        </div>
+                        <span class="node-name">QUALITY GATE</span>
+                    </div>
+                    <div class="pipeline-arrow" id="arrow-7">➔</div>
+
+                    <!-- Phase 8: Report & Approval -->
+                    <div class="pipeline-node" id="node-p8" data-target="panel-phase8" title="Phase 8: Comprehensive Report & Human Approval">
+                        <div class="node-inner">
+                            <i data-lucide="award"></i>
+                            <span class="ph-badge">P8</span>
+                        </div>
+                        <span class="node-name">REPORT & APPROVAL</span>
+                    </div>
+                </div>
+            </section>
+
+            <!-- WORKSPACE LAYOUT GRID -->
+            <div class="dashboard-grid">
+                
+                <!-- LEFT COLUMN: INPUT SPECIFICATION & SCOPE -->
+                <div class="grid-column left-scope-col">
+                    <section class="panel scope-panel">
+                        <div class="panel-header">
+                            <div class="panel-title">
+                                <i data-lucide="sliders-horizontal"></i>
+                                <span>SCOPE CONFIGURATION</span>
+                            </div>
+                            <div class="preset-selector">
+                                <label for="preset-select">Spec Preset:</label>
+                                <select id="preset-select">
+                                    <option value="smart-building">Smart Building Telemetry Server</option>
+                                    <option value="auth-service">Auth & Access Control Service</option>
+                                    <option value="empty">Empty / Custom Spec</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Form vs JSON tabs -->
+                        <div class="tab-selectors">
+                            <button id="tab-visual" class="tab-select active">
+                                <i data-lucide="edit"></i> Visual Parameters Form
+                            </button>
+                            <button id="tab-json" class="tab-select">
+                                <i data-lucide="code"></i> Raw JSON Payload
+                            </button>
+                        </div>
+
+                        <div class="panel-body">
+                            <!-- Visual parameters Form -->
+                            <form id="visual-form" class="editor-view">
+                                <div class="form-group">
+                                    <label for="project-id">Project Identifier <span class="required">*</span></label>
+                                    <input type="text" id="project-id" placeholder="e.g. smart-building-001" required>
+                                </div>
+
+                                <!-- SRS Section -->
+                                <div class="field-group-card">
+                                    <div class="card-title-sm">
+                                        <i data-lucide="file-spreadsheet"></i>
+                                        <span>Software Requirements Specification (SRS)</span>
+                                    </div>
+                                    <div class="inline-form-group">
+                                        <div class="sub-form-group flex-2">
+                                            <label for="srs-title">Document Title</label>
+                                            <input type="text" id="srs-title" placeholder="Smart Building Ingestion SRS">
+                                        </div>
+                                        <div class="sub-form-group flex-1">
+                                            <label for="srs-version">Version</label>
+                                            <input type="text" id="srs-version" placeholder="1.0.0">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Features & Requirements List</label>
+                                        <div id="srs-features-container" class="dynamic-rows"></div>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-srs-feature">
+                                            <i data-lucide="plus-circle"></i> Add Requirement
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- SDD Section -->
+                                <div class="field-group-card">
+                                    <div class="card-title-sm">
+                                        <i data-lucide="layers"></i>
+                                        <span>Software Design Document (SDD)</span>
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="sdd-architecture">Architecture Pattern</label>
+                                        <input type="text" id="sdd-architecture" placeholder="e.g. Event-driven architecture, Microservices">
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Logical Components</label>
+                                        <div id="sdd-components-container" class="dynamic-rows"></div>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-sdd-component">
+                                            <i data-lucide="plus-circle"></i> Add Component
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Source Code Section -->
+                                <div class="field-group-card">
+                                    <div class="card-title-sm">
+                                        <i data-lucide="git-pull-request"></i>
+                                        <span>Code Repository & Delta Changes</span>
+                                    </div>
+                                    <div class="inline-form-group">
+                                        <div class="sub-form-group flex-2">
+                                            <label for="code-repository">Repository URL</label>
+                                            <input type="text" id="code-repository" placeholder="github.com/org/smart-building">
+                                        </div>
+                                        <div class="sub-form-group flex-1">
+                                            <label for="code-language">Language</label>
+                                            <input type="text" id="code-language" placeholder="Python">
+                                        </div>
+                                    </div>
+                                    <div class="form-group">
+                                        <label>Repository File Structure</label>
+                                        <div id="code-files-container" class="dynamic-rows"></div>
+                                        <button type="button" class="btn btn-secondary btn-sm" id="btn-add-code-file">
+                                            <i data-lucide="plus-circle"></i> Add File Path
+                                        </button>
+                                    </div>
+                                    <div class="nested-fields">
+                                        <span class="nested-title">Regression Delta Targets</span>
+                                        <div class="form-group">
+                                            <label>Changed Files</label>
+                                            <div id="changed-files-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-changed-file">
+                                                <i data-lucide="plus-circle"></i> Add Changed File
+                                            </button>
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Changed Functions</label>
+                                            <div id="changed-functions-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-changed-function">
+                                                <i data-lucide="plus-circle"></i> Add Changed Function
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Optional Context Metadata -->
+                                <div class="optional-section">
+                                    <span class="section-divider-label">OPTIONAL TARGET CONTEXT</span>
+                                    
+                                    <div class="toggle-row">
+                                        <label class="switch-toggle">
+                                            <input type="checkbox" id="toggle-api">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span>API Documentation Metadata</span>
+                                    </div>
+                                    <div id="api-card" class="field-group-card hidden">
+                                        <div class="form-group">
+                                            <label for="api-base-url">Base URL</label>
+                                            <input type="text" id="api-base-url" placeholder="https://api.smartbuilding.com">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Endpoints</label>
+                                            <div id="api-endpoints-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-api-endpoint">
+                                                <i data-lucide="plus-circle"></i> Add Endpoint
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="toggle-row">
+                                        <label class="switch-toggle">
+                                            <input type="checkbox" id="toggle-db">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span>Database Schema Metadata</span>
+                                    </div>
+                                    <div id="db-card" class="field-group-card hidden">
+                                        <div class="form-group">
+                                            <label for="db-dialect">Database Dialect</label>
+                                            <input type="text" id="db-dialect" placeholder="PostgreSQL">
+                                        </div>
+                                        <div class="form-group">
+                                            <label>Tables</label>
+                                            <div id="db-tables-container" class="dynamic-rows"></div>
+                                            <button type="button" class="btn btn-secondary btn-sm" id="btn-add-db-table">
+                                                <i data-lucide="plus-circle"></i> Add Table
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <div class="toggle-row">
+                                        <label class="switch-toggle">
+                                            <input type="checkbox" id="toggle-env">
+                                            <span class="switch-slider"></span>
+                                        </label>
+                                        <span>Environment Settings</span>
+                                    </div>
+                                    <div id="env-card" class="field-group-card hidden">
+                                        <div class="form-group">
+                                            <label for="env-name">Target Environment Name</label>
+                                            <input type="text" id="env-name" placeholder="staging">
+                                        </div>
+                                    </div>
+                                </div>
+                            </form>
+
+                            <!-- Raw JSON Text Editor -->
+                            <div id="json-editor-container" class="editor-view hidden">
+                                <div class="json-banner">
+                                    <i data-lucide="info" class="text-cyan"></i>
+                                    <span>Direct JSON Payload Mode. Changes automatically sync to visual controls.</span>
+                                </div>
+                                <textarea id="json-textarea" spellcheck="false"></textarea>
+                                <div id="json-syntax-error" class="error-banner hidden">
+                                    <i data-lucide="alert-octagon"></i>
+                                    <span id="json-error-text">Malformed JSON syntax.</span>
+                                </div>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- RIGHT COLUMN: 8-PHASE WORKFLOW RESULTS & GOVERNANCE DASHBOARD -->
+                <div class="grid-column right-results-col space-y">
+                    
+                    <!-- TOP AUDIT STATUS RIBBON -->
+                    <div class="audit-summary-grid">
+                        
+                        <!-- ACTIVE STAGE BADGE -->
+                        <div class="audit-card stage-active-card">
+                            <div class="card-top-title">CURRENT WORKFLOW STAGE</div>
+                            <div class="stage-status-val" id="active-stage-indicator">READY</div>
+                            <span class="stage-sub-text" id="active-stage-desc">Awaiting Execution Trigger</span>
+                        </div>
+
+                        <!-- QUALITY SCORE GAUGE -->
+                        <div class="audit-card quality-gauge-card">
+                            <div class="card-top-title">QUALITY SCORE</div>
+                            <div class="gauge-number" id="header-quality-score">--</div>
+                            <div class="gauge-sub" id="header-quality-desc">Phase 7 Quality Gate</div>
+                        </div>
+
+                        <!-- RELEASE READINESS CARD -->
+                        <div class="audit-card readiness-card">
+                            <div class="card-top-title">RELEASE READINESS</div>
+                            <div class="readiness-pill status-pending" id="header-readiness-badge">PENDING RUN</div>
+                            <div class="readiness-sub" id="header-release-allowed">Release Allowed: <strong>--</strong></div>
+                        </div>
+
+                        <!-- HUMAN APPROVAL SUMMARY -->
+                        <div class="audit-card approval-quick-card">
+                            <div class="card-top-title">HUMAN APPROVAL (P8)</div>
+                            <div class="approval-status-tag status-pending" id="header-approval-status">PENDING</div>
+                            <div class="approval-sub" id="header-approval-reviewer">Reviewer: <strong>--</strong></div>
+                        </div>
+
+                    </div>
+
+                    <!-- MAIN 8-PHASE RESULTS PANEL -->
+                    <section class="panel results-panel-main">
+                        <div class="panel-header border-teal">
+                            <div class="panel-title text-cyan">
+                                <i data-lucide="layers"></i>
+                                <span>8-PHASE WORKFLOW RESULTS EXPLORER</span>
+                            </div>
+                            <div class="header-right-badges">
+                                <span id="run-status-badge" class="badge badge-outline">IDLE</span>
+                            </div>
+                        </div>
+
+                        <!-- 8-PHASE TABS NAVIGATION BAR -->
+                        <div class="phase-navbar">
+                            <button class="phase-nav-btn active" data-target="panel-phase1">
+                                <span class="nav-tag">P1</span>
+                                <i data-lucide="check-square"></i>
+                                <span>1. Input Validation</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase2">
+                                <span class="nav-tag">P2</span>
+                                <i data-lucide="brain-circuit"></i>
+                                <span>2. Intelligence</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase3">
+                                <span class="nav-tag">P3</span>
+                                <i data-lucide="file-code"></i>
+                                <span>3. Test Design</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase4">
+                                <span class="nav-tag">P4</span>
+                                <i data-lucide="terminal"></i>
+                                <span>4. Execution</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase5">
+                                <span class="nav-tag">P5</span>
+                                <i data-lucide="server"></i>
+                                <span>5. Infrastructure</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase6">
+                                <span class="nav-tag">P6</span>
+                                <i data-lucide="search-code"></i>
+                                <span>6. Failure Analysis</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase7">
+                                <span class="nav-tag">P7</span>
+                                <i data-lucide="shield-alert"></i>
+                                <span>7. Quality Gate</span>
+                            </button>
+                            <button class="phase-nav-btn" data-target="panel-phase8">
+                                <span class="nav-tag">P8</span>
+                                <i data-lucide="award"></i>
+                                <span>8. Report & Approval</span>
+                            </button>
+                        </div>
+
+                        <div class="panel-body no-pad overflow-y">
+                            
+                            <!-- Validation errors alert box -->
+                            <div id="validation-errors-alert" class="validation-errors-box hidden">
+                                <div class="error-header">
+                                    <i data-lucide="alert-octagon" class="text-danger"></i>
+                                    <span>INPUT SPECIFICATION VALIDATION ERRORS</span>
+                                </div>
+                                <ul id="validation-errors-list"></ul>
+                            </div>
+
+                            <!-- Dashboard Idle empty state -->
+                            <div id="results-empty-state" class="center-empty">
+                                <div class="radar-ping">
+                                    <i data-lucide="radar"></i>
+                                </div>
+                                <h3>SYSTEM READY FOR RUN</h3>
+                                <p>Select a preset specification on the left and click <strong>EXECUTE FULL WORKFLOW</strong> to run all 8 phases through the LangGraph engine.</p>
+                            </div>
+
+                            <!-- Dashboard Loading state -->
+                            <div id="results-loading-state" class="center-empty hidden">
+                                <div class="command-spinner"></div>
+                                <h3 id="loading-title">EXECUTING 8-PHASE QUALITY GATEWAY</h3>
+                                <p id="loading-node-status">Orchestrating LangGraph analysis nodes...</p>
+                                <div class="loading-progress-bar">
+                                    <div class="progress-fill" id="loading-progress-fill"></div>
+                                </div>
+                            </div>
+
+                            <!-- 8-PHASE TAB PANELS VIEWPORT -->
+                            <div id="results-content" class="results-content-area hidden">
+                                
+                                <!-- ========================================================= -->
+                                <!-- PHASE 1: FOUNDATION & INPUT VALIDATION                    -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase1" class="phase-tab-panel active">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="check-square"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 1 — Foundation & Input Validation</h4>
+                                            <p>Validates raw SRS, SDD, and repository delta inputs against schemas and normalizes structured context for downstream agents.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p1-status-chip">PASSED</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="phase1-grid">
+                                        <div class="report-card p1-validation-card">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id">VALIDATION STATUS</span>
+                                                <span class="inline-tag tag-mint-border" id="p1-validation-tag">PASSED</span>
+                                            </div>
+                                            <div class="validation-summary-body" id="p1-validation-body">
+                                                <div class="check-item"><i data-lucide="check" class="text-mint"></i> <span>SRS Title & Features Schema: OK</span></div>
+                                                <div class="check-item"><i data-lucide="check" class="text-mint"></i> <span>SDD Architecture & Components: OK</span></div>
+                                                <div class="check-item"><i data-lucide="check" class="text-mint"></i> <span>Repository & Code Metadata: OK</span></div>
+                                            </div>
+                                        </div>
+
+                                        <div class="report-card p1-context-card">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id">NORMALIZED CONTEXT INSPECTOR</span>
+                                                <span class="inline-tag tag-cyan-border">IN-MEMORY STATE</span>
+                                            </div>
+                                            <div class="json-inspector">
+                                                <pre id="p1-context-json">{}</pre>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 2: TESTING INTELLIGENCE                             -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase2" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="brain-circuit"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 2 — Testing Intelligence & Risk Analysis</h4>
+                                            <p>Extracts testable specifications, assesses software risks, maps AST regression impact, calculates requirement coverage, and plans strategy.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p2-status-chip">COMPLETED</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sub-navigation for Phase 2 -->
+                                    <div class="sub-tab-bar">
+                                        <button class="sub-tab-btn active" data-subtarget="p2-reqs">Requirements (<span id="p2-reqs-count">0</span>)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p2-risks">Risk Assessment (<span id="p2-risks-count">0</span>)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p2-coverage">Coverage Targets (<span id="p2-cov-val">0%</span>)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p2-impact">Change Impact</button>
+                                        <button class="sub-tab-btn" data-subtarget="p2-strategy">Testing Strategy</button>
+                                    </div>
+
+                                    <!-- Requirements Subpanel -->
+                                    <div id="p2-reqs" class="sub-panel active">
+                                        <div id="requirements-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Risks Subpanel -->
+                                    <div id="p2-risks" class="sub-panel">
+                                        <div id="risks-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Coverage Subpanel -->
+                                    <div id="p2-coverage" class="sub-panel">
+                                        <div class="coverage-overview-grid">
+                                            <div class="report-card coverage-metric-card">
+                                                <div class="report-card-header">
+                                                    <span class="report-card-id">REQUIREMENTS COVERAGE</span>
+                                                    <span class="inline-tag tag-cyan-border">TRACEABILITY</span>
+                                                </div>
+                                                <div class="coverage-gauge-box">
+                                                    <h2 id="coverage-percentage-val">0%</h2>
+                                                    <span class="card-desc">Specification Mapped to Code & Endpoints</span>
+                                                    <div class="progress-bar-container">
+                                                        <div class="progress-bar-fill" id="coverage-progress-bar"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div class="report-card">
+                                                <div class="report-card-header">
+                                                    <span class="report-card-id">MAPPED VS UNMAPPED SPECIFICATIONS</span>
+                                                </div>
+                                                <div class="coverage-split-details">
+                                                    <div>
+                                                        <h5>Covered Requirements:</h5>
+                                                        <div id="covered-reqs-tags" class="badge-group"></div>
+                                                    </div>
+                                                    <div style="margin-top: 12px;">
+                                                        <h5>Uncovered Requirements:</h5>
+                                                        <div id="uncovered-reqs-tags" class="badge-group"></div>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Change Impact Subpanel -->
+                                    <div id="p2-impact" class="sub-panel">
+                                        <div class="impact-panel-layout">
+                                            <div class="impact-left-panel">
+                                                <div class="regression-danger-card">
+                                                    <span class="rating-label">REGRESSION RISK RATING</span>
+                                                    <h2 id="regression-risk-level-badge">NONE</h2>
+                                                </div>
+                                                <p id="impact-message" class="impact-desc-box"></p>
+                                            </div>
+                                            <div class="impact-right-panel">
+                                                <div class="impact-items-group">
+                                                    <h4>Modified Repository Files</h4>
+                                                    <ul id="impact-changed-files" class="bullet-list text-mono"></ul>
+                                                </div>
+                                                <div class="impact-items-group">
+                                                    <h4>Modified Function Symbols</h4>
+                                                    <ul id="impact-changed-functions" class="bullet-list text-mono"></ul>
+                                                </div>
+                                                <div class="impact-items-group border-top">
+                                                    <h4>Impacted Requirements</h4>
+                                                    <div id="impact-affected-reqs-tags" class="badge-group"></div>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Strategy Subpanel -->
+                                    <div id="p2-strategy" class="sub-panel">
+                                        <div class="strategy-columns-grid">
+                                            <div class="strategy-card">
+                                                <span class="strategy-title cyan-text">
+                                                    <i data-lucide="binary"></i> Unit Test Targets
+                                                </span>
+                                                <ul id="strategy-unit-tests" class="bullet-list"></ul>
+                                            </div>
+                                            <div class="strategy-card">
+                                                <span class="strategy-title teal-text">
+                                                    <i data-lucide="shuffle"></i> Integration Scenarios
+                                                </span>
+                                                <ul id="strategy-integration-tests" class="bullet-list"></ul>
+                                            </div>
+                                            <div class="strategy-card">
+                                                <span class="strategy-title amber-text">
+                                                    <i data-lucide="globe"></i> API Contracts
+                                                </span>
+                                                <ul id="strategy-api-tests" class="bullet-list"></ul>
+                                            </div>
+                                        </div>
+                                        <div class="strategy-details-bar">
+                                            <div class="detail-block">
+                                                <h5>Recommended QA Tools</h5>
+                                                <div id="strategy-tools" class="badge-group"></div>
+                                            </div>
+                                            <div class="detail-block">
+                                                <h5>Target Host Environments</h5>
+                                                <div id="strategy-envs" class="badge-group"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 3: TEST DESIGN                                      -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase3" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="file-code"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 3 — Test Design & Traceability Mapping</h4>
+                                            <p>Generates structured test cases, business scenarios, synthetic test data, and maintains full bidirectional requirement traceability.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p3-status-chip">READY</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sub-navigation for Phase 3 -->
+                                    <div class="sub-tab-bar">
+                                        <button class="sub-tab-btn active" data-subtarget="p3-cases">Test Cases (<span id="p3-cases-count">0</span>)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p3-scenarios">Business Scenarios (<span id="p3-scenarios-count">0</span>)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p3-data">Test Data Records (<span id="p3-data-count">0</span>)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p3-trace">Traceability Matrix</button>
+                                    </div>
+
+                                    <!-- Test Cases Subpanel -->
+                                    <div id="p3-cases" class="sub-panel active">
+                                        <div class="filter-bar" id="test-case-filters">
+                                            <div class="filter-group">
+                                                <label for="filter-test-type">Test Type</label>
+                                                <select id="filter-test-type">
+                                                    <option value="all">All Types</option>
+                                                </select>
+                                            </div>
+                                            <div class="filter-group">
+                                                <label for="filter-priority">Priority</label>
+                                                <select id="filter-priority">
+                                                    <option value="all">All Priorities</option>
+                                                </select>
+                                            </div>
+                                            <div class="filter-group">
+                                                <label for="filter-category">Category</label>
+                                                <select id="filter-category">
+                                                    <option value="all">All Categories</option>
+                                                </select>
+                                            </div>
+                                        </div>
+                                        <div id="test-cases-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Scenarios Subpanel -->
+                                    <div id="p3-scenarios" class="sub-panel">
+                                        <div id="scenarios-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Test Data Subpanel -->
+                                    <div id="p3-data" class="sub-panel">
+                                        <div id="test-data-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Traceability Subpanel -->
+                                    <div id="p3-trace" class="sub-panel">
+                                        <div class="traceability-alert-grid">
+                                            <div class="trace-alert-card alert-warning">
+                                                <span class="trace-alert-label">UNCOVERED REQUIREMENTS</span>
+                                                <div id="trace-uncovered-reqs" class="badge-group"></div>
+                                            </div>
+                                            <div class="trace-alert-card alert-danger">
+                                                <span class="trace-alert-label">ORPHANED TEST CASES</span>
+                                                <div id="trace-orphaned-cases" class="badge-group"></div>
+                                            </div>
+                                            <div class="trace-alert-card alert-danger">
+                                                <span class="trace-alert-label">ORPHANED TEST DATA</span>
+                                                <div id="trace-orphaned-data" class="badge-group"></div>
+                                            </div>
+                                        </div>
+                                        <div id="traceability-list" class="cards-grid"></div>
+                                    </div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 4: TEST EXECUTION                                   -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase4" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="terminal"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 4 — Multi-Module Test Suite Execution</h4>
+                                            <p>Executes test cases across Unit, Integration, API, UI, and Security modules with deterministic status and real-time execution telemetry.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p4-status-chip">IDLE</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Execution Metrics Summary Bar -->
+                                    <div class="execution-metrics-bar">
+                                        <div class="exec-metric-card">
+                                            <span class="metric-label">TOTAL TESTS</span>
+                                            <span class="metric-val" id="execution-total">0</span>
+                                        </div>
+                                        <div class="exec-metric-card">
+                                            <span class="metric-label">PASSED</span>
+                                            <span class="metric-val text-mint" id="execution-passed">0</span>
+                                        </div>
+                                        <div class="exec-metric-card">
+                                            <span class="metric-label">FAILED / ERRORS</span>
+                                            <span class="metric-val text-danger" id="execution-failed">0</span>
+                                        </div>
+                                        <div class="exec-metric-card">
+                                            <span class="metric-label">SKIPPED</span>
+                                            <span class="metric-val text-amber" id="execution-skipped">0</span>
+                                        </div>
+                                        <div class="exec-metric-card">
+                                            <span class="metric-label">PASS RATE</span>
+                                            <span class="metric-val text-cyan" id="execution-pass-rate">0%</span>
+                                        </div>
+                                        <div class="exec-metric-card">
+                                            <span class="metric-label">DURATION</span>
+                                            <span class="metric-val" id="execution-duration">0.00s</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Execution Modules Overview -->
+                                    <div class="section-title-sm" style="margin-top: 16px;">
+                                        <i data-lucide="boxes"></i>
+                                        <span>EXECUTION MODULES INVOLVED</span>
+                                    </div>
+                                    <div id="execution-module-overview" class="cards-grid modules-grid"></div>
+
+                                    <!-- Individual Test Results -->
+                                    <div class="section-title-sm" style="margin-top: 16px;">
+                                        <i data-lucide="list-checks"></i>
+                                        <span>DETAILED TEST CASE EXECUTION RESULTS</span>
+                                    </div>
+                                    <div id="execution-results-container" class="cards-grid"></div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 5: EXECUTION INFRASTRUCTURE                         -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase5" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="server"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 5 — Runtime Concurrency, Retries & Artifacts</h4>
+                                            <p>Manages parallel execution threads, retry policies, environment metadata, execution log trails, and captured failure artifacts.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p5-status-chip">IDLE</span>
+                                        </div>
+                                    </div>
+
+                                    <div class="infra-grid">
+                                        <!-- Run Metadata -->
+                                        <div class="report-card">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id">EXECUTION RUN RUNTIME METADATA</span>
+                                                <span class="inline-tag tag-cyan-border" id="infra-run-id">RUN-ID: --</span>
+                                            </div>
+                                            <div class="infra-meta-list">
+                                                <div class="meta-item"><span>Platform Host:</span> <strong id="infra-platform">--</strong></div>
+                                                <div class="meta-item"><span>Python Interpreter:</span> <strong id="infra-python">--</strong></div>
+                                                <div class="meta-item"><span>Worker Concurrency:</span> <strong id="infra-workers">--</strong></div>
+                                                <div class="meta-item"><span>Max Retries Policy:</span> <strong id="infra-retries">--</strong></div>
+                                                <div class="meta-item"><span>Started At:</span> <strong id="infra-started">--</strong></div>
+                                                <div class="meta-item"><span>Completed At:</span> <strong id="infra-completed">--</strong></div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Multi-Attempt Retries & Flakiness History -->
+                                        <div class="report-card">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id">RETRY ATTEMPTS & CONCURRENCY TELEMETRY</span>
+                                            </div>
+                                            <div id="infra-attempts-container" class="attempts-log-body">
+                                                <div class="card-desc">No multi-attempt retries recorded for this run.</div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Screenshots & Evidence Explorer -->
+                                    <div class="section-title-sm" style="margin-top: 16px;">
+                                        <i data-lucide="image"></i>
+                                        <span>CAPTURED SCREENSHOTS & FAILURE ARTIFACT EVIDENCE</span>
+                                    </div>
+                                    <div id="infra-artifacts-container" class="cards-grid artifacts-grid">
+                                        <div class="card-desc" style="padding: 16px;">No visual screenshot artifacts generated.</div>
+                                    </div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 6: RESULT INTELLIGENCE / FAILURE ANALYSIS          -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase6" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="search-code"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 6 — Result Intelligence & Defect Root-Cause Triage</h4>
+                                            <p>Performs deterministic failure classification, probable root-cause category isolation, defect severity triage, and flaky test detection.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p6-status-chip">IDLE</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Phase 6 Metrics Bar -->
+                                    <div class="p6-metrics-grid">
+                                        <div class="report-card metric-box">
+                                            <span class="metric-label">FAILURES ANALYZED</span>
+                                            <h3 id="p6-total-failures">0</h3>
+                                        </div>
+                                        <div class="report-card metric-box">
+                                            <span class="metric-label">PRODUCT DEFECTS</span>
+                                            <h3 class="text-danger" id="p6-product-defects">0</h3>
+                                        </div>
+                                        <div class="report-card metric-box">
+                                            <span class="metric-label">TEST DEFECTS</span>
+                                            <h3 class="text-amber" id="p6-test-defects">0</h3>
+                                        </div>
+                                        <div class="report-card metric-box">
+                                            <span class="metric-label">FLAKY TESTS</span>
+                                            <h3 class="text-cyan" id="p6-flaky-tests">0</h3>
+                                        </div>
+                                    </div>
+
+                                    <!-- Sub-navigation for Phase 6 -->
+                                    <div class="sub-tab-bar" style="margin-top: 16px;">
+                                        <button class="sub-tab-btn active" data-subtarget="p6-failures">Failure Classifications</button>
+                                        <button class="sub-tab-btn" data-subtarget="p6-rootcauses">Root Causes</button>
+                                        <button class="sub-tab-btn" data-subtarget="p6-defects">Defect Triage (P1–P4)</button>
+                                        <button class="sub-tab-btn" data-subtarget="p6-flaky">Flaky Test Intelligence</button>
+                                    </div>
+
+                                    <!-- Failure Classifications Subpanel -->
+                                    <div id="p6-failures" class="sub-panel active">
+                                        <div id="p6-failures-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Root Causes Subpanel -->
+                                    <div id="p6-rootcauses" class="sub-panel">
+                                        <div id="p6-rootcauses-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Defects Subpanel -->
+                                    <div id="p6-defects" class="sub-panel">
+                                        <div id="p6-defects-list" class="cards-grid"></div>
+                                    </div>
+
+                                    <!-- Flaky Subpanel -->
+                                    <div id="p6-flaky" class="sub-panel">
+                                        <div id="p6-flaky-list" class="cards-grid"></div>
+                                    </div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 7: QUALITY GATE / RELEASE READINESS                 -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase7" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="shield-alert"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 7 — Quality Gate & Release Readiness Engine</h4>
+                                            <p>Aggregates evidence across all prior phases to compute a deterministic weighted Quality Score (0–100) and evaluate 5 mandatory quality gates.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p7-status-chip">IDLE</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- Master Quality Score Breakdown -->
+                                    <div class="qg-master-grid">
+                                        <div class="report-card qg-score-breakdown-card">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id">WEIGHTED QUALITY SCORE FORMULA</span>
+                                                <span class="inline-tag tag-mint-border" id="qg-overall-badge">PASS</span>
+                                            </div>
+                                            <div class="score-formula-layout">
+                                                <div class="score-big-display">
+                                                    <h1 id="qg-score-num">0.0</h1>
+                                                    <span>OUT OF 100</span>
+                                                    <div class="readiness-tag" id="qg-readiness-tag">NOT_READY</div>
+                                                </div>
+                                                <div class="score-components-table" id="qg-components-table"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- 5 Individual Quality Gate Cards -->
+                                    <div class="section-title-sm" style="margin-top: 16px;">
+                                        <i data-lucide="shield-check"></i>
+                                        <span>5 MANDATORY QUALITY GATES EVALUATION</span>
+                                    </div>
+                                    <div class="gates-5-grid" id="qg-5-gates-container"></div>
+
+                                    <!-- Blocking Issues & Recommendations -->
+                                    <div class="qg-issues-grid" style="margin-top: 16px;">
+                                        <div class="report-card alert-danger">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id text-danger">BLOCKING RELEASE ISSUES</span>
+                                            </div>
+                                            <ul id="qg-blocking-issues-list" class="bullet-list">
+                                                <li>No blocking issues detected</li>
+                                            </ul>
+                                        </div>
+                                        <div class="report-card">
+                                            <div class="report-card-header">
+                                                <span class="report-card-id text-cyan">QUALITY RECOMMENDATIONS</span>
+                                            </div>
+                                            <ul id="qg-recommendations-list" class="bullet-list"></ul>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- ========================================================= -->
+                                <!-- PHASE 8: COMPREHENSIVE REPORT & HUMAN APPROVAL            -->
+                                <!-- ========================================================= -->
+                                <div id="panel-phase8" class="phase-tab-panel">
+                                    <div class="phase-purpose-banner">
+                                        <div class="purpose-icon"><i data-lucide="award"></i></div>
+                                        <div class="purpose-text">
+                                            <h4>PHASE 8 — Comprehensive Report & Human Approval / Rejection</h4>
+                                            <p>Generates executive publication reports, exports in JSON/HTML/CSV formats, and governs final production release approval with human sign-off.</p>
+                                        </div>
+                                        <div class="phase-backend-status">
+                                            <span class="status-chip" id="p8-status-chip">PENDING</span>
+                                        </div>
+                                    </div>
+
+                                    <!-- CRITICAL HUMAN APPROVAL / REJECTION SECTION -->
+                                    <div class="human-approval-master-card" id="approval-section">
+                                        <div class="approval-header">
+                                            <div class="approval-title-group">
+                                                <i data-lucide="user-check" class="text-cyan"></i>
+                                                <div>
+                                                    <h3>HUMAN RELEASE GOVERNANCE GATE</h3>
+                                                    <span class="card-desc">Final authority sign-off required prior to production deployment rollout.</span>
+                                                </div>
+                                            </div>
+                                            <div class="approval-badge-large" id="approval-status-badge">PENDING REVIEW</div>
+                                        </div>
+
+                                        <!-- Summary Matrix for Decision -->
+                                        <div class="approval-decision-matrix">
+                                            <div class="decision-cell">
+                                                <span class="cell-label">QUALITY GATE STATUS</span>
+                                                <strong class="cell-value" id="approval-qg-status">--</strong>
+                                            </div>
+                                            <div class="decision-cell">
+                                                <span class="cell-label">RELEASE READINESS</span>
+                                                <strong class="cell-value" id="approval-readiness">--</strong>
+                                            </div>
+                                            <div class="decision-cell">
+                                                <span class="cell-label">CRITICAL DEFECTS</span>
+                                                <strong class="cell-value" id="approval-defect-count">0</strong>
+                                            </div>
+                                            <div class="decision-cell highlight-cell">
+                                                <span class="cell-label">RELEASE ALLOWED (FINAL)</span>
+                                                <strong class="cell-value" id="approval-release-allowed">NO</strong>
+                                            </div>
+                                        </div>
+
+                                        <!-- Decision Metadata Display -->
+                                        <div class="approval-meta-row" id="approval-meta-display">
+                                            <span>Reviewer: <strong id="approval-reviewer-name">--</strong></span>
+                                            <span>Timestamp: <strong id="approval-timestamp-val">--</strong></span>
+                                            <span>Report Reference: <strong id="approval-report-ref">--</strong></span>
+                                        </div>
+
+                                        <!-- Reviewer Comment Display -->
+                                        <div id="approval-comment-box" class="approval-comment-box hidden">
+                                            <strong>Reviewer Decision Reason / Comments:</strong>
+                                            <p id="approval-comment-content"></p>
+                                        </div>
+
+                                        <!-- Interactive Action Buttons -->
+                                        <div class="approval-action-bar" id="approval-action-buttons">
+                                            <button type="button" class="btn btn-primary btn-glow" id="btn-action-approve">
+                                                <i data-lucide="check-circle-2"></i> APPROVE RELEASE
+                                            </button>
+                                            <button type="button" class="btn btn-danger" id="btn-action-reject">
+                                                <i data-lucide="x-circle"></i> REJECT RELEASE
+                                            </button>
+                                        </div>
+
+                                        <!-- Interactive Rejection Form (Revealed on click) -->
+                                        <div id="rejection-form-container" class="rejection-form-container hidden">
+                                            <label for="rejection-reason-input">Rejection Reason & Required Remediation (Mandatory) <span class="required">*</span></label>
+                                            <textarea id="rejection-reason-input" placeholder="Provide detailed technical reason explaining why release cannot proceed (e.g. Critical defect TC-005 unresolved in auth module)..."></textarea>
+                                            <div class="rejection-btn-row">
+                                                <button type="button" class="btn btn-secondary btn-sm" id="btn-cancel-rejection">Cancel</button>
+                                                <button type="button" class="btn btn-danger btn-sm" id="btn-confirm-rejection">
+                                                    <i data-lucide="send"></i> Confirm & Submit Rejection
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <!-- Report Export Toolbar -->
+                                    <div class="report-toolbar-card">
+                                        <div class="toolbar-left">
+                                            <i data-lucide="download"></i>
+                                            <span>EXPORT TEST REPORT & AUDIT ARTIFACTS</span>
+                                        </div>
+                                        <div class="export-btn-group">
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-pdf">
+                                                <i data-lucide="file"></i> Export PDF
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-docx">
+                                                <i data-lucide="file-text"></i> Export DOCX
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-md">
+                                                <i data-lucide="file-code"></i> Export MD
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-json">
+                                                <i data-lucide="file-json"></i> Export JSON
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-html">
+                                                <i data-lucide="globe"></i> Export HTML
+                                            </button>
+                                            <button class="btn btn-secondary btn-sm" id="btn-export-csv">
+                                                <i data-lucide="sheet"></i> Export CSV
+                                            </button>
+                                        </div>
+                                    </div>
+
+                                    <!-- Executive Summary & Phase Breakdown -->
+                                    <div class="report-card" style="margin-top: 16px;">
+                                        <div class="report-card-header">
+                                            <span class="report-card-id">EXECUTIVE MANAGEMENT SUMMARY</span>
+                                        </div>
+                                        <p id="report-exec-summary" class="card-desc" style="font-size: 14px; line-height: 1.6;"></p>
+                                    </div>
+
+                                    <!-- Phase-by-Phase Summaries -->
+                                    <div class="section-title-sm" style="margin-top: 16px;">
+                                        <i data-lucide="list-ordered"></i>
+                                        <span>PHASE-BY-PHASE AUDIT TRAIL</span>
+                                    </div>
+                                    <div id="report-phases-grid" class="cards-grid"></div>
+
+                                </div>
+
+                            </div>
+
+                        </div>
+                    </section>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- MODAL: REVIEWER IDENTIFIER PROMPT -->
+    <div id="modal-reviewer" class="modal-backdrop hidden">
+        <div class="modal-card">
+            <div class="modal-header">
+                <h3>Authorize Release Approval</h3>
+                <button type="button" class="btn-close-modal" id="btn-close-reviewer-modal">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Please enter your reviewer name or identity identifier to record human governance sign-off in the audit trail:</p>
+                <div class="form-group" style="margin-top: 12px;">
+                    <label for="reviewer-id-input">Reviewer Identifier / QA Lead Name <span class="required">*</span></label>
+                    <input type="text" id="reviewer-id-input" placeholder="e.g. Sarah Connor (Principal QA Lead)">
+                </div>
+                <div class="form-group">
+                    <label for="reviewer-notes-input">Approval Notes (Optional)</label>
+                    <input type="text" id="reviewer-notes-input" placeholder="e.g. Verified zero critical defects. Ready for deployment.">
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" id="btn-cancel-approval">Cancel</button>
+                <button type="button" class="btn btn-primary btn-glow" id="btn-submit-approval">
+                    <i data-lucide="check"></i> Sign & Authorize Release
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- MODAL: SCREENSHOT / IMAGE ZOOM -->
+    <div id="modal-screenshot" class="modal-backdrop hidden">
+        <div class="modal-card modal-lg">
+            <div class="modal-header">
+                <h3 id="modal-screenshot-title">Screenshot Evidence</h3>
+                <button type="button" class="btn-close-modal" id="btn-close-screenshot-modal">&times;</button>
+            </div>
+            <div class="modal-body text-center">
+                <img id="modal-screenshot-img" src="" alt="Screenshot" class="modal-img-preview">
+            </div>
+        </div>
+    </div>
+
+    <!-- Script Entrypoint -->
+    <script src="app.js"></script>
+</body>
+</html>
