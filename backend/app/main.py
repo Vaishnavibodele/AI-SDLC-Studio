@@ -11,6 +11,25 @@ from .database import Base, engine, get_db
 from . import schemas, models
 from .services import project_service, agent_service, design_service, document_generator, development_service
 
+# Testing Agent in-process imports (Unified Single-Port Architecture)
+from .testing_agent.api.testing import (
+    router as testing_router,
+    _reports_store,
+    start_testing_workflow,
+    execute_test_cases_from_workflow,
+    retry_failed_tests,
+    get_testing_state_status,
+    approve_report,
+    reject_report,
+    get_approval_status,
+    export_stored_report,
+    export_report,
+)
+from .testing_agent.models.schemas import (
+    TestingStartRequest,
+    ApprovalRequest,
+)
+
 from sqlalchemy import text
 
 # Initialize tables
@@ -21,7 +40,7 @@ api_key_header = APIKeyHeader(name=API_KEY_NAME, auto_error=False)
 
 def verify_api_key(request: Request, api_key: Optional[str] = Security(api_key_header)):
     # Allow health check, root, and docs to pass without key
-    if request.url.path in ["/", "/health", "/docs", "/openapi.json", "/redoc"]:
+    if request.url.path in ["/", "/health", "/docs", "/openapi.json", "/redoc"] or request.url.path.startswith("/testing"):
         return
     # Support both header and query param for downloads/window.open
     actual_key = api_key or request.query_params.get("api_key")
@@ -34,9 +53,13 @@ def verify_api_key(request: Request, api_key: Optional[str] = Security(api_key_h
 
 app = FastAPI(
     title="AI SDLC Studio API",
-    version="1.0.0",
+    version="2.0.0",
+    description="Unified AI Software Development Life Cycle Platform: Requirements, Design, Development, and Testing Agents on a Single Port.",
     dependencies=[Depends(verify_api_key)]
 )
+
+# Mount the unified Testing Agent router
+app.include_router(testing_router)
 
 @app.get("/")
 def read_root():
@@ -44,24 +67,33 @@ def read_root():
         "status": "online",
         "service": "AI SDLC Studio Backend API",
         "version": "2.0.0",
-        "frontend_url": "http://localhost:3000",
-        "api_docs": "http://127.0.0.1:8000/docs",
-        "message": "AI SDLC Studio Backend API is running successfully. Please open the user interface at http://localhost:3000"
+        "agents": ["Requirement Agent", "Design Agent", "Development Agent", "Testing Agent"],
+        "architecture": "Unified Single-Server Architecture",
+        "frontend_url": os.getenv("FRONTEND_URL", "http://localhost:5173"),
+        "api_docs": "/docs",
+        "message": "AI SDLC Studio Backend API running all 4 agents in a single server process."
     }
 
-# CORS middleware config
-origins = [
-    "http://localhost:5173",
-    "http://127.0.0.1:5173",
-    "http://localhost:3000",
-]
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=origins,
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+# CORS middleware config - dynamic for local dev and AWS S3 static website hosting
+cors_origins_raw = os.getenv("CORS_ORIGINS", "*")
+if cors_origins_raw.strip() == "*":
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origin_regex=".*",
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+else:
+    origins = [o.strip() for o in cors_origins_raw.split(",") if o.strip()]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=origins,
+        allow_credentials=True,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
+
 
 @app.post("/api/projects", response_model=schemas.ProjectResponse)
 def create_project(project: schemas.ProjectCreate, db: Session = Depends(get_db)):
@@ -978,87 +1010,93 @@ def get_testing_agent_payload(project_id: str, db: Session = Depends(get_db)):
     }
 
 
-TESTING_AGENT_URL = os.getenv("TESTING_AGENT_URL", "http://127.0.0.1:8085")
-
-
 @app.post("/api/projects/{project_id}/testing/start")
 def start_testing_flow(project_id: str, db: Session = Depends(get_db)):
-    payload = get_testing_agent_payload(project_id, db)
+    """In-process execution of Testing Agent P1-P3 Workflow on the unified server."""
+    payload_dict = get_testing_agent_payload(project_id, db)
     try:
-        r = requests.post(f"{TESTING_AGENT_URL}/testing/start", json=payload, timeout=60)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        data = r.json()
-        project_service.log_activity(db, project_id, "TESTING_INTELLIGENCE_STARTED", f"Testing intelligence P1-P3 triggered. Validation: {data.get('validation_status')}")
+        req = TestingStartRequest(**payload_dict)
+        res = start_testing_workflow(req)
+        data = res.model_dump()
+        project_service.log_activity(
+            db, project_id, "TESTING_INTELLIGENCE_STARTED",
+            f"Testing intelligence P1-P3 triggered. Validation: {data.get('validation_status')}"
+        )
         return data
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent workflow error: {str(e)}")
 
 
 @app.post("/api/projects/{project_id}/testing/execute")
 def execute_testing_pipeline(project_id: str, body: Optional[dict] = None, db: Session = Depends(get_db)):
-    payload = get_testing_agent_payload(project_id, db)
+    """In-process execution of Testing Agent P1-P8 pipeline on the unified server."""
+    payload_dict = get_testing_agent_payload(project_id, db)
     if body:
         if "test_case_ids" in body:
-            payload["test_case_ids"] = body["test_case_ids"]
+            payload_dict["test_case_ids"] = body["test_case_ids"]
         if "retry" in body:
-            payload["retry"] = body["retry"]
+            payload_dict["retry"] = body["retry"]
     try:
-        r = requests.post(f"{TESTING_AGENT_URL}/testing/execute", json=payload, timeout=300)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        data = r.json()
-        qg_status = data.get("quality_gate", {}).get("overall_status", "UNKNOWN")
-        readiness = data.get("quality_gate", {}).get("release_readiness", "UNKNOWN")
+        req = TestingStartRequest(**payload_dict)
+        res = execute_test_cases_from_workflow(req)
+        data = res.model_dump()
+        qg_status = data.get("quality_gate", {}).get("overall_status", "UNKNOWN") if data.get("quality_gate") else "UNKNOWN"
+        readiness = data.get("quality_gate", {}).get("release_readiness", "UNKNOWN") if data.get("quality_gate") else "UNKNOWN"
         project_service.log_activity(
             db, project_id, "TESTING_EXECUTION_COMPLETED",
             f"Testing Agent P1-P8 executed. Quality Gate: {qg_status}, Readiness: {readiness}"
         )
         return data
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent execution error: {str(e)}")
 
 
 @app.post("/api/projects/{project_id}/testing/retry")
 def retry_testing_pipeline(project_id: str, body: Optional[dict] = None, db: Session = Depends(get_db)):
-    payload = get_testing_agent_payload(project_id, db)
-    payload["retry"] = True
+    """In-process retry of failed test cases on the unified server."""
+    payload_dict = get_testing_agent_payload(project_id, db)
+    payload_dict["retry"] = True
     if body and "test_case_ids" in body:
-        payload["test_case_ids"] = body["test_case_ids"]
+        payload_dict["test_case_ids"] = body["test_case_ids"]
     try:
-        r = requests.post(f"{TESTING_AGENT_URL}/testing/retry", json=payload, timeout=300)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        data = r.json()
+        req = TestingStartRequest(**payload_dict)
+        res = retry_failed_tests(req)
+        data = res.model_dump()
         project_service.log_activity(
             db, project_id, "TESTING_RETRY_COMPLETED",
             f"Retried failed test cases. Executed {len(data.get('results', []))} tests."
         )
         return data
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent retry error: {str(e)}")
 
 
 @app.get("/api/projects/{project_id}/testing/status")
 def get_testing_agent_status(project_id: str):
+    """Fetch live Testing Agent state directly in-process."""
     try:
-        r = requests.get(f"{TESTING_AGENT_URL}/testing/status/{project_id}", timeout=15)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        return r.json()
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+        return get_testing_state_status(project_id)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent status error: {str(e)}")
 
 
 @app.post("/api/projects/{project_id}/testing/report/approve")
 def approve_testing_report(project_id: str, body: dict, db: Session = Depends(get_db)):
+    """Human approval governance for testing report and release gating."""
     try:
-        payload = dict(body)
-        payload["project_id"] = project_id
-        r = requests.post(f"{TESTING_AGENT_URL}/testing/report/approve", json=payload, timeout=30)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        res = r.json()
+        payload_dict = dict(body)
+        payload_dict["project_id"] = project_id
+        req = ApprovalRequest(**payload_dict)
+        res = approve_report(req)
+        res_dict = res.model_dump()
         
         # Update SDLC project state to DEPLOYMENT / READY_FOR_DEPLOYMENT
         project_service.update_project_status(db, project_id, "DEPLOYMENT", "READY_FOR_DEPLOYMENT")
@@ -1066,20 +1104,22 @@ def approve_testing_report(project_id: str, body: dict, db: Session = Depends(ge
             db, project_id, "TESTING_APPROVED",
             f"Testing phase approved by {body.get('approved_by', 'QA Lead')}. Project moved to DEPLOYMENT."
         )
-        return res
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+        return res_dict
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent approval error: {str(e)}")
 
 
 @app.post("/api/projects/{project_id}/testing/report/reject")
 def reject_testing_report(project_id: str, body: dict, db: Session = Depends(get_db)):
+    """Human rejection governance for testing report - blocking release and reverting to development."""
     try:
-        payload = dict(body)
-        payload["project_id"] = project_id
-        r = requests.post(f"{TESTING_AGENT_URL}/testing/report/reject", json=payload, timeout=30)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        res = r.json()
+        payload_dict = dict(body)
+        payload_dict["project_id"] = project_id
+        req = ApprovalRequest(**payload_dict)
+        res = reject_report(req)
+        res_dict = res.model_dump()
         
         # Update SDLC project state to DEVELOPMENT / DEVELOPMENT_PLANNING
         project_service.update_project_status(db, project_id, "DEVELOPMENT", "DEVELOPMENT_PLANNING")
@@ -1087,9 +1127,11 @@ def reject_testing_report(project_id: str, body: dict, db: Session = Depends(get
             db, project_id, "TESTING_REJECTED",
             f"Testing phase rejected by {body.get('approved_by', 'QA Lead')}. Reason: {body.get('comment', 'None')}"
         )
-        return res
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent service error: {str(e)}")
+        return res_dict
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent rejection error: {str(e)}")
 
 
 @app.get("/api/projects/{project_id}/testing/export/{fmt}")
@@ -1100,39 +1142,33 @@ def export_testing_report(project_id: str, fmt: str, db: Session = Depends(get_d
     if fmt_lower not in ["pdf", "docx", "md", "json", "html", "csv"]:
         raise HTTPException(status_code=400, detail=f"Unsupported format: {fmt}. Must be pdf, docx, md, json, html, or csv.")
 
-    media_types = {
-        "pdf": "application/pdf",
-        "docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-        "md": "text/markdown; charset=utf-8",
-        "json": "application/json",
-        "html": "text/html; charset=utf-8",
-        "csv": "text/csv; charset=utf-8",
-    }
-
-    # 1. Try to fetch stored report from Testing Agent
-    try:
-        r = requests.get(f"{TESTING_AGENT_URL}/testing/report/export/{project_id}?fmt={fmt_lower}", timeout=60)
-        if r.status_code == 200:
-            media_type = r.headers.get("content-type", media_types.get(fmt_lower, "application/octet-stream"))
-            content_disposition = r.headers.get("content-disposition", f'attachment; filename="testing-report-{project_id}.{fmt_lower}"')
-            return Response(content=r.content, media_type=media_type, headers={"Content-Disposition": content_disposition})
-    except requests.exceptions.RequestException:
-        pass
+    # 1. If a generated report exists in memory for this project, export directly
+    if project_id in _reports_store:
+        return export_stored_report(project_id, fmt=fmt_lower)
 
     # 2. If not stored or first run, export using real upstream SDLC project payload
     try:
-        payload = get_testing_agent_payload(project_id, db)
-        r = requests.post(f"{TESTING_AGENT_URL}/testing/report/export?fmt={fmt_lower}", json=payload, timeout=90)
-        if r.status_code != 200:
-            raise HTTPException(status_code=r.status_code, detail=r.text)
-        media_type = r.headers.get("content-type", media_types.get(fmt_lower, "application/octet-stream"))
-        content_disposition = r.headers.get("content-disposition", f'attachment; filename="testing-report-{project_id}.{fmt_lower}"')
-        return Response(content=r.content, media_type=media_type, headers={"Content-Disposition": content_disposition})
-    except requests.exceptions.RequestException as e:
-        raise HTTPException(status_code=502, detail=f"Testing Agent export service error: {str(e)}")
+        payload_dict = get_testing_agent_payload(project_id, db)
+        req = TestingStartRequest(**payload_dict)
+        return export_report(req, fmt=fmt_lower)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Testing Agent export error: {str(e)}")
 
 
 @app.get("/health")
 def health_check():
-    return {"status": "ok"}
+    return {
+        "status": "ok",
+        "service": "AI SDLC Studio Backend",
+        "port_configuration": "single-port-unified",
+        "agents": {
+            "requirement_agent": "active",
+            "design_agent": "active",
+            "development_agent": "active",
+            "testing_agent": "active"
+        }
+    }
+
 

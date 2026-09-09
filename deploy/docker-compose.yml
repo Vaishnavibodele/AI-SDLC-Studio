@@ -1,0 +1,22 @@
+version: '3.8'
+
+services:
+  backend:
+    build:
+      context: ..
+      dockerfile: deploy/Dockerfile
+    container_name: ai-sdlc-backend
+    restart: always
+    ports:
+      - "8000:8000"
+    environment:
+      - STUDIO_API_KEY=default_secret_key_12345
+      - CORS_ORIGINS=*
+      - PORT=8000
+      - HOST=0.0.0.0
+    volumes:
+      - ../backend/app:/app/app
+      - backend_data:/app/data
+
+volumes:
+  backend_data:

@@ -1,0 +1,26 @@
+[Unit]
+Description=AI SDLC Studio Unified 4-Agent Backend Service (Port 8000)
+Documentation=https://github.com/your-org/ai-sdlc-studio
+After=network.target
+
+[Service]
+Type=simple
+User=ubuntu
+Group=ubuntu
+WorkingDirectory=/opt/ai-sdlc-studio/backend
+Environment="PATH=/opt/ai-sdlc-studio/backend/.venv/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin"
+EnvironmentFile=-/opt/ai-sdlc-studio/backend/.env
+ExecStart=/opt/ai-sdlc-studio/backend/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --access-log
+Restart=always
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+SyslogIdentifier=ai-sdlc-backend
+
+# Security Sandboxing
+PrivateTmp=true
+ProtectSystem=full
+NoNewPrivileges=true
+
+[Install]
+WantedBy=multi-user.target
